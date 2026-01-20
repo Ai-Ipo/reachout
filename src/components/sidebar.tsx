@@ -47,8 +47,6 @@ export function SidebarComponent({ className }: SidebarProps) {
 
     const workspaceItems = [
         { href: `/`, label: "Home", icon: Home, disabled: false },
-        { href: `/admin/cities`, label: "Cities", icon: MapPin, disabled: false },
-        { href: `/admin/companies`, label: "All Companies", icon: Building2, disabled: false },
         { href: `/admin/team`, label: "Team", icon: Users, disabled: false },
         { href: `/telemarketer/start`, label: "My Assignments", icon: Phone, disabled: false },
     ]

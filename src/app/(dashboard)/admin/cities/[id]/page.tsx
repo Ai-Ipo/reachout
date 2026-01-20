@@ -1,28 +1,36 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useAuth } from "@clerk/nextjs" // Correct import
+import { useAuth } from "@clerk/nextjs"
 import { createClient } from "@/lib/supabase/client"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CompanyTable } from "@/features/companies/company-table"
+import { CompanyDataTable } from "@/features/companies/company-data-table"
+import { AddCompanyDialog } from "@/features/companies/add-company-dialog"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Building2, Calendar, Edit, Trash2 } from "lucide-react"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ArrowLeft, MoreVertical, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { CityDialog } from "@/features/cities/city-dialog"
 
 export default function CityDetailPage() {
     const params = useParams()
     const cityId = params?.id as string
     const [city, setCity] = useState<any>(null)
-    const [editDialogOpen, setEditDialogOpen] = useState(false)
+    const [companyCount, setCompanyCount] = useState<number>(0)
+    const [addDialogOpen, setAddDialogOpen] = useState(false)
+    const [refreshKey, setRefreshKey] = useState(0)
     const router = useRouter()
     const { getToken } = useAuth()
 
-    async function fetchCity() {
+    const fetchCity = useCallback(async () => {
         const token = await getToken({ template: "supabase", skipCache: true })
         const supabase = createClient(token)
-        const { data, error } = await supabase
+
+        const { data } = await supabase
             .from("cities")
             .select("*")
             .eq("id", cityId)
@@ -31,14 +39,22 @@ export default function CityDetailPage() {
         if (data) {
             setCity(data)
         }
-    }
+
+        // Fetch company count
+        const { count } = await supabase
+            .from("companies")
+            .select("*", { count: "exact", head: true })
+            .eq("city_id", cityId)
+
+        setCompanyCount(count || 0)
+    }, [cityId, getToken])
 
     useEffect(() => {
         if (cityId) fetchCity()
-    }, [cityId])
+    }, [cityId, fetchCity, refreshKey])
 
     async function handleDelete() {
-        if (!confirm("Are you sure you want to delete this city? This will likely fail if companeis are attached.")) return
+        if (!confirm("Are you sure you want to delete this city? This will fail if companies are attached.")) return
 
         const token = await getToken()
         const supabase = createClient(token)
@@ -51,56 +67,64 @@ export default function CityDetailPage() {
         }
     }
 
+    function handleCompanyAdded() {
+        setRefreshKey(k => k + 1)
+        fetchCity() // Update count
+    }
+
     if (!city) return <div className="p-8">Loading city...</div>
 
     return (
-        <div className="flex-1 space-y-4 p-8 pt-6">
-            <div className="flex items-center space-x-4">
-                <Link href="/">
-                    <Button variant="ghost" size="icon">
-                        <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                </Link>
-                <div className="flex-1">
-                    <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                        {city.name}
-                        <span className="text-lg text-muted-foreground font-normal">({city.short_code})</span>
-                    </h2>
+        <div className="flex-1 space-y-6 p-8 pt-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                    <Link href="/">
+                        <Button variant="ghost" size="icon">
+                            <ArrowLeft className="h-4 w-4" />
+                        </Button>
+                    </Link>
+                    <div>
+                        <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                            {city.name}
+                            <span className="text-lg text-muted-foreground font-normal">({city.short_code})</span>
+                        </h2>
+                        <p className="text-sm text-muted-foreground">{companyCount} companies registered</p>
+                    </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                    <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
-                        <Edit className="mr-2 h-4 w-4" /> Edit Details
-                    </Button>
-                    <Button variant="destructive" onClick={handleDelete}>
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete City
-                    </Button>
-                </div>
+
+                {/* 3-dot menu */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={handleDelete}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete City
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Companies</CardTitle>
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">--</div>
-                        <p className="text-xs text-muted-foreground">Registered in this location</p>
-                    </CardContent>
-                </Card>
-                {/* Add more stats cards here later */}
-            </div>
+            {/* Company Table */}
+            <CompanyDataTable
+                key={refreshKey}
+                cityId={cityId}
+                onAddCompany={() => setAddDialogOpen(true)}
+            />
 
-            <div className="mt-8">
-                <h3 className="text-lg font-medium mb-4">Companies</h3>
-                <CompanyTable initialCityId={cityId} />
-            </div>
-
-            <CityDialog
-                open={editDialogOpen}
-                onOpenChange={setEditDialogOpen}
-                onSuccess={fetchCity}
-                cityToEdit={city} // You'll need to update CityDialog to accept this prop
+            {/* Add Company Dialog */}
+            <AddCompanyDialog
+                open={addDialogOpen}
+                onOpenChange={setAddDialogOpen}
+                cityId={cityId}
+                onSuccess={handleCompanyAdded}
             />
         </div>
     )

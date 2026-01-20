@@ -9,7 +9,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -67,7 +66,6 @@ export function CompanyTable({ initialCityId, statusFilter }: CompanyTableProps)
             }
 
             if (statusFilter === 'unassigned') {
-                // Assuming 'unassigned' means assigned_to is null
                 query = query.is("assigned_to", null)
             }
 
@@ -88,9 +86,9 @@ export function CompanyTable({ initialCityId, statusFilter }: CompanyTableProps)
     const nextValid = companies.length === pageSize
 
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Company Database</CardTitle>
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Companies</h3>
                 <div className="flex gap-2">
                     <Button
                         variant="outline"
@@ -109,56 +107,56 @@ export function CompanyTable({ initialCityId, statusFilter }: CompanyTableProps)
                         Next
                     </Button>
                 </div>
-            </CardHeader>
-            <CardContent>
-                {loading ? (
-                    <div className="space-y-2">
-                        <Skeleton className="w-full h-12" />
-                        <Skeleton className="w-full h-12" />
-                        <Skeleton className="w-full h-12" />
-                    </div>
-                ) : (
-                    <Table>
-                        <TableHeader>
+            </div>
+
+            {loading ? (
+                <div className="space-y-2">
+                    <Skeleton className="w-full h-12" />
+                    <Skeleton className="w-full h-12" />
+                    <Skeleton className="w-full h-12" />
+                </div>
+            ) : (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>ID</TableHead>
+                            <TableHead>Company Name</TableHead>
+                            <TableHead>City</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Assigned To</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {companies.length === 0 ? (
                             <TableRow>
-                                <TableHead>ID</TableHead>
-                                <TableHead>Company Name</TableHead>
-                                <TableHead>City</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Assigned To</TableHead>
+                                <TableCell colSpan={5} className="text-center h-24">
+                                    No companies found. Upload data to get started.
+                                </TableCell>
                             </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {companies.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="text-center h-24">
-                                        No companies found. Upload data to get started.
+                        ) : (
+                            companies.map((company) => (
+                                <TableRow key={company.id}>
+                                    <TableCell className="font-mono text-xs">{company.internal_id || 'N/A'}</TableCell>
+                                    <TableCell className="font-medium">{company.name}</TableCell>
+                                    <TableCell>{company.city?.name || '-'}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={
+                                            company.calling_status === 'interested' ? 'default' :
+                                                company.calling_status === 'not_interested' ? 'destructive' : 'secondary'
+                                        }>
+                                            {company.calling_status}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground">
+                                        {company.assigned_to_profile?.full_name || 'Unassigned'}
                                     </TableCell>
                                 </TableRow>
-                            ) : (
-                                companies.map((company) => (
-                                    <TableRow key={company.id}>
-                                        <TableCell className="font-mono text-xs">{company.internal_id || 'N/A'}</TableCell>
-                                        <TableCell className="font-medium">{company.name}</TableCell>
-                                        <TableCell>{company.city?.name || '-'}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={
-                                                company.calling_status === 'interested' ? 'default' :
-                                                    company.calling_status === 'not_interested' ? 'destructive' : 'secondary'
-                                            }>
-                                                {company.calling_status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {company.assigned_to_profile?.full_name || 'Unassigned'}
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                )}
-            </CardContent>
-        </Card>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            )}
+        </div>
     )
 }
+
