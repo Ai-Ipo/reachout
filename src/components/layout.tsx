@@ -1,0 +1,27 @@
+"use client"
+
+import { SidebarComponent } from "@/components/sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
+
+interface LayoutProps {
+  children: React.ReactNode
+}
+
+export function Layout({ children }: LayoutProps) {
+  return (
+    <SidebarProvider className="scrollbar-hide">
+
+      {/* Sidebar */}
+      <SidebarComponent />
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col p-3.5 pl-0 bg-sidebar overflow-y-hidden max-h-screen h-screen scrollbar-hide">
+        <div className="border border-border bg-background rounded-md overflow-y-auto scrollbar-hide max-h-screen h-screen">
+          {children}
+        </div>
+      </div>
+
+    </SidebarProvider>
+
+  )
+} 
