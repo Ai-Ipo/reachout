@@ -33,10 +33,21 @@ const citySchema = z.object({
     short_code: z.string().length(3, "Code must be 3 characters").transform((val) => val.toUpperCase()),
 })
 
-export function CityDialog() {
-    const [open, setOpen] = useState(false)
+interface CityDialogProps {
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+    onSuccess?: () => void
+    cityToEdit?: any // Optional future use
+}
+
+export function CityDialog({ open: controlledOpen, onOpenChange: setControlledOpen, onSuccess, cityToEdit }: CityDialogProps) {
+    const [internalOpen, setInternalOpen] = useState(false)
     const router = useRouter()
     const { getToken } = useAuth()
+
+    const isControlled = controlledOpen !== undefined
+    const open = isControlled ? controlledOpen : internalOpen
+    const setOpen = isControlled ? setControlledOpen! : setInternalOpen
 
     const form = useForm<z.infer<typeof citySchema>>({
         resolver: zodResolver(citySchema),
@@ -60,6 +71,7 @@ export function CityDialog() {
 
             setOpen(false)
             form.reset()
+            if (onSuccess) onSuccess()
             router.refresh()
         } catch (error) {
             console.error("Error creating city:", error)

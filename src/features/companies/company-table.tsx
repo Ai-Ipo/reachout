@@ -26,7 +26,12 @@ interface Company {
     created_at: string
 }
 
-export function CompanyTable() {
+interface CompanyTableProps {
+    initialCityId?: string
+    statusFilter?: string // 'unassigned', 'active', etc.
+}
+
+export function CompanyTable({ initialCityId, statusFilter }: CompanyTableProps) {
     const [companies, setCompanies] = useState<Company[]>([])
     const [loading, setLoading] = useState(true)
     const [page, setPage] = useState(0)
@@ -42,7 +47,7 @@ export function CompanyTable() {
             const from = page * pageSize
             const to = from + pageSize - 1
 
-            const { data, error } = await supabase
+            let query = supabase
                 .from("companies")
                 .select(`
             id,
@@ -53,9 +58,20 @@ export function CompanyTable() {
             created_at,
             city:cities(name),
             assigned_to_profile:profiles(full_name)
-        `)
+        `, { count: 'exact' })
                 .range(from, to)
                 .order("created_at", { ascending: false })
+
+            if (initialCityId) {
+                query = query.eq("city_id", initialCityId)
+            }
+
+            if (statusFilter === 'unassigned') {
+                // Assuming 'unassigned' means assigned_to is null
+                query = query.is("assigned_to", null)
+            }
+
+            const { data, error } = await query
 
             if (error) {
                 console.error("Error fetching companies:", error)
@@ -67,7 +83,7 @@ export function CompanyTable() {
         }
 
         fetchCompanies()
-    }, [getToken, page])
+    }, [getToken, page, initialCityId, statusFilter])
 
     const nextValid = companies.length === pageSize
 
