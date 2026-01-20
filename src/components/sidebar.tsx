@@ -45,10 +45,7 @@ export function SidebarComponent({ className }: SidebarProps) {
 
   
   const workspaceItems = [
-    { href: `/dashboard`, label: "Home", icon: Home, disabled: false },
-    { href: `/dashboard/sessions`, label: "Sessions", icon: FolderOpen, disabled: false },
-    { href: `/dashboard/integrations`, label: "Integrations", icon: Box, disabled: false },
-    { href: `/dashboard/playbooks`, label: "Playbooks", icon: Book, disabled: true },
+    { href: `/`, label: "Home", icon: Home, disabled: false },
   ]
 
   // Unified active path checker that handles both tenant and non-tenant routes
@@ -61,7 +58,7 @@ export function SidebarComponent({ className }: SidebarProps) {
       <SidebarHeader className="p-6">
         {/* Header content if needed */}
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-extrabold tracking-tighter text-foreground uppercase">Prism</h1>
+          <h1 className="text-xl font-extrabold tracking-tighter text-foreground uppercase">Ai IPO</h1>
         </div>
       </SidebarHeader>
 
@@ -110,21 +107,6 @@ export function SidebarComponent({ className }: SidebarProps) {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-
-          {/* Jobs Section - Disabled */}
-          <SidebarMenu>
-            <div className="opacity-60 cursor-not-allowed">
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  disabled
-                  className="text-xs font-extrabold uppercase tracking-wider px-2 rounded text-muted-foreground"
-                >
-                  Watching
-                  <ChevronDown className="ml-auto" />
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </div>
-          </SidebarMenu>
         </div>
       </SidebarContent>
 

@@ -6,13 +6,16 @@ import { flushSync } from "react-dom"
 
 import { cn } from "@/lib/utils"
 
-interface AnimatedThemeTogglerProps extends React.ComponentPropsWithoutRef<"button"> {
+interface AnimatedThemeTogglerProps
+  extends React.ComponentPropsWithoutRef<"button"> {
   duration?: number
+  size?: string
 }
 
 export const AnimatedThemeToggler = ({
   className,
   duration = 400,
+  size = "12px",
   ...props
 }: AnimatedThemeTogglerProps) => {
   const [isDark, setIsDark] = useState(false)
@@ -77,7 +80,7 @@ export const AnimatedThemeToggler = ({
       className={cn(className)}
       {...props}
     >
-      {isDark ? <Sun /> : <Moon />}
+      {isDark ? <Sun className={size} /> : <Moon className={size} />}
       <span className="sr-only">Toggle theme</span>
     </button>
   )

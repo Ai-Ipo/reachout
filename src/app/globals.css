@@ -587,37 +587,8 @@
   @apply hidden;
 }
 
-.cl-cardBox {
-  @apply shadow-none w-full;
-}
-
-.cl-card {
-  @apply shadow-none p-8;
-}
-
-.cl-button__slack {
-  @apply shadow-none bg-transparent text-foreground;
-
-  &:hover {
-    @apply bg-transparent text-foreground cursor-pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: translateY(0);
-
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    &:active {
-      transform: translateY(0);
-      transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-  }
-}
-
-.cl-rootBox {
-  @apply mb-0 flex flex-col items-center justify-center w-full;
-}
+/* Removed problematic global Clerk overrides */
+/* .cl-cardBox, .cl-card, .cl-rootBox removed to let Clerk handle layout */
 
 @layer base {
   * {
@@ -672,7 +643,8 @@
   mix-blend-mode: normal;
 }
 
-::view-transition-old(root), ::view-transition-new(root) {
-    animation: none;
-    mix-blend-mode: normal;
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }
