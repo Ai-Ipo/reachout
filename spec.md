@@ -52,6 +52,11 @@
     - **Directors:** DIN No, Name, Contact No, Email ID, Email Status.
     - **Tracking:** Calling Status, Response, Remarks. *(Whatsapp Status removed)*
 
+### D. Authentication
+- **Provider:** Clerk (Native Integration with Supabase).
+- **Strategy:** Uses Clerk's JWT Templates (`template: 'supabase'`) to pass authenticated tokens to Supabase.
+- **Security:** Row Level Security (RLS) policies enforced on all database operations (Client & Server).
+
 ## 2. Chrome Extension (Toffler Exporter)
 
 A custom browser extension to automate data extraction.
