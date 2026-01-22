@@ -4,33 +4,48 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const statusBadgeVariants = cva(
-  "inline-flex items-center rounded-sm px-1.5 py-0.5 text-xs font-medium transition-colors",
+  "inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset transition-colors whitespace-nowrap",
   {
     variants: {
       variant: {
         // Calling statuses
-        queued: "bg-status-neutral-muted text-muted-foreground",
-        picked_up: "bg-status-info-muted text-status-info",
-        not_answered: "bg-status-warning-muted text-status-warning",
-        not_contactable: "bg-destructive/10 text-destructive",
-        interested: "bg-status-success-muted text-status-success",
-        not_interested: "bg-destructive/10 text-destructive",
+        queued: "bg-gray-50 text-gray-600 ring-gray-500/10",
+        picked_up: "bg-blue-50 text-blue-700 ring-blue-700/10",
+        not_answered: "bg-yellow-50 text-yellow-800 ring-yellow-600/20",
+        not_contactable: "bg-red-50 text-red-700 ring-red-600/10",
+        interested: "bg-green-50 text-green-700 ring-green-600/20",
+        not_interested: "bg-red-50 text-red-700 ring-red-600/10",
+
         // Eligibility statuses
-        eligible: "bg-status-success-muted text-status-success",
-        ineligible: "bg-destructive/10 text-destructive",
-        pending: "bg-status-neutral-muted text-muted-foreground",
+        eligible: "bg-green-50 text-green-700 ring-green-600/20",
+        ineligible: "bg-red-50 text-red-700 ring-red-600/10",
+        pending: "bg-gray-50 text-gray-600 ring-gray-500/10",
+
+        // Board types
+        board_sme: "bg-purple-50 text-purple-700 ring-purple-700/10",
+        board_main: "bg-indigo-50 text-indigo-700 ring-indigo-700/10",
+        board_other: "bg-gray-100 text-gray-600 ring-gray-500/10",
+
+        // WhatsApp statuses
+        wa_not_sent: "bg-gray-50 text-gray-600 ring-gray-500/10",
+        wa_sent: "bg-blue-50 text-blue-700 ring-blue-700/10",
+        wa_delivered: "bg-cyan-50 text-cyan-700 ring-cyan-700/10",
+        wa_read: "bg-emerald-50 text-emerald-700 ring-emerald-700/10",
+        wa_replied: "bg-green-50 text-green-700 ring-green-600/20",
+        wa_failed: "bg-red-50 text-red-700 ring-red-600/10",
+
         // Generic
-        default: "bg-secondary text-secondary-foreground",
-        success: "bg-status-success-muted text-status-success",
-        warning: "bg-status-warning-muted text-status-warning",
-        info: "bg-status-info-muted text-status-info",
-        error: "bg-destructive/10 text-destructive",
-        muted: "bg-muted text-muted-foreground",
+        default: "bg-gray-50 text-gray-600 ring-gray-500/10",
+        success: "bg-green-50 text-green-700 ring-green-600/20",
+        warning: "bg-yellow-50 text-yellow-800 ring-yellow-600/20",
+        info: "bg-blue-50 text-blue-700 ring-blue-700/10",
+        error: "bg-red-50 text-red-700 ring-red-600/10",
+        muted: "bg-gray-100 text-gray-600 ring-gray-500/10",
       },
       size: {
-        sm: "text-[10px] px-1 py-0",
-        default: "text-xs px-1.5 py-0.5",
-        lg: "text-sm px-2 py-0.5",
+        sm: "text-[10px] px-1.5 py-0.5",
+        default: "text-xs px-2 py-1",
+        lg: "text-sm px-2.5 py-1",
       },
     },
     defaultVariants: {
@@ -42,7 +57,7 @@ const statusBadgeVariants = cva(
 
 export interface StatusBadgeProps
   extends React.HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof statusBadgeVariants> {
+  VariantProps<typeof statusBadgeVariants> {
   children: React.ReactNode
 }
 
@@ -73,6 +88,29 @@ export function getEligibilityStatusVariant(status: string): StatusBadgeProps["v
     eligible: "eligible",
     ineligible: "ineligible",
     pending: "pending",
+  }
+  return mapping[status] || "default"
+}
+
+// Helper to map board type to badge variant
+export function getBoardStatusVariant(status: string): StatusBadgeProps["variant"] {
+  const mapping: Record<string, StatusBadgeProps["variant"]> = {
+    SME: "board_sme",
+    Main: "board_main",
+    Other: "board_other",
+  }
+  return mapping[status] || "default"
+}
+
+// Helper to map whatsapp status to badge variant
+export function getWhatsappStatusVariant(status: string): StatusBadgeProps["variant"] {
+  const mapping: Record<string, StatusBadgeProps["variant"]> = {
+    not_sent: "wa_not_sent",
+    sent: "wa_sent",
+    delivered: "wa_delivered",
+    read: "wa_read",
+    replied: "wa_replied",
+    failed: "wa_failed",
   }
   return mapping[status] || "default"
 }

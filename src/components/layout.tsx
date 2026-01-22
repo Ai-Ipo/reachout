@@ -15,8 +15,8 @@ export function Layout({ children }: LayoutProps) {
       <SidebarComponent />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col p-3.5 pl-0 bg-sidebar overflow-y-hidden max-h-screen h-screen scrollbar-hide">
-        <div className="border border-border bg-background rounded-md overflow-y-auto scrollbar-hide max-h-screen h-screen">
+      <div className="flex-1 flex flex-col p-3.5 pl-0 bg-sidebar overflow-y-hidden max-h-screen h-screen max-w-screen w-screen scrollbar-hide ">
+        <div className="border border-border bg-background rounded-md overflow-y-auto scrollbar-hide max-h-screen h-screen ">
           {children}
         </div>
       </div>

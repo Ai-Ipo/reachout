@@ -41,6 +41,13 @@ import {
 } from "@/lib/schemas/company-schema"
 import { Plus, Building2, Users, FileText, Phone, IndianRupee, Globe, X, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+    StatusBadge,
+    getCallingStatusVariant,
+    getEligibilityStatusVariant,
+    getBoardStatusVariant,
+    getWhatsappStatusVariant
+} from "@/components/ui/status-badge"
 
 interface AddCompanyDialogProps {
     open: boolean
@@ -246,7 +253,11 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                                 </FormControl>
                                                 <SelectContent>
                                                     {Object.entries(boardTypeLabels).map(([value, label]) => (
-                                                        <SelectItem key={value} value={value} className="text-sm">{label}</SelectItem>
+                                                        <SelectItem key={value} value={value} className="text-sm">
+                                                            <StatusBadge variant={getBoardStatusVariant(value)} size="sm" className="font-normal">
+                                                                {label}
+                                                            </StatusBadge>
+                                                        </SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
@@ -268,7 +279,11 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                                 </FormControl>
                                                 <SelectContent>
                                                     {Object.entries(eligibilityStatusLabels).map(([value, label]) => (
-                                                        <SelectItem key={value} value={value} className="text-sm">{label}</SelectItem>
+                                                        <SelectItem key={value} value={value} className="text-sm">
+                                                            <StatusBadge variant={getEligibilityStatusVariant(value)} size="sm" className="font-normal">
+                                                                {label}
+                                                            </StatusBadge>
+                                                        </SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
@@ -560,7 +575,11 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                                 </FormControl>
                                                 <SelectContent>
                                                     {Object.entries(callingStatusLabels).map(([value, label]) => (
-                                                        <SelectItem key={value} value={value} className="text-sm">{label}</SelectItem>
+                                                        <SelectItem key={value} value={value} className="text-sm">
+                                                            <StatusBadge variant={getCallingStatusVariant(value)} size="sm" className="font-normal">
+                                                                {label}
+                                                            </StatusBadge>
+                                                        </SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
@@ -582,7 +601,11 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                                 </FormControl>
                                                 <SelectContent>
                                                     {Object.entries(whatsappStatusLabels).map(([value, label]) => (
-                                                        <SelectItem key={value} value={value} className="text-sm">{label}</SelectItem>
+                                                        <SelectItem key={value} value={value} className="text-sm">
+                                                            <StatusBadge variant={getWhatsappStatusVariant(value)} size="sm" className="font-normal">
+                                                                {label}
+                                                            </StatusBadge>
+                                                        </SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>

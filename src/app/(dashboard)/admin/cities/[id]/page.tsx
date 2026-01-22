@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
 import { createClient } from "@/lib/supabase/client"
-import { CompanyDataTable } from "@/features/companies/company-data-table"
+import { CompanyDataTable, Company } from "@/features/companies/company-data-table"
+import { EditCompanyPanel } from "@/features/companies/edit-company-panel"
 import { AddCompanyDialog } from "@/features/companies/add-company-dialog"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,13 +18,17 @@ import { ArrowLeft, MoreVertical, Trash2 } from "lucide-react"
 import Link from "next/link"
 
 import { Skeleton } from "@/components/ui/skeleton"
+import { useSidebar } from "@/components/ui/sidebar"
+import { cn } from "@/lib/utils"
 
 export default function CityDetailPage() {
     const params = useParams()
+    const { setOpen } = useSidebar()
     const cityId = params?.id as string
     const [city, setCity] = useState<any>(null)
     const [companyCount, setCompanyCount] = useState<number>(0)
     const [addDialogOpen, setAddDialogOpen] = useState(false)
+    const [editingCompany, setEditingCompany] = useState<Company | null>(null)
     const [refreshKey, setRefreshKey] = useState(0)
     const router = useRouter()
     const { getToken } = useAuth()
@@ -54,6 +59,7 @@ export default function CityDetailPage() {
     useEffect(() => {
         if (cityId) fetchCity()
     }, [cityId, fetchCity, refreshKey])
+
 
     async function handleDelete() {
         if (!confirm("Are you sure you want to delete this city? This will fail if companies are attached.")) return
@@ -116,57 +122,81 @@ export default function CityDetailPage() {
     )
 
     return (
-        <div className="flex-1 space-y-6 p-8 pt-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                    <Link href="/">
-                        <Button variant="ghost" size="icon">
-                            <ArrowLeft className="h-4 w-4" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                            {city.name}
-                            <span className="text-lg text-muted-foreground font-normal">({city.short_code})</span>
-                        </h2>
-                        <p className="text-sm text-muted-foreground">{companyCount} companies registered</p>
+        <div className="flex flex-row h-full ">
+            <div className={cn("flex-1 space-y-6 p-6 pt-6", {
+                "max-w-[calc(100vw-400px-12rem)]": editingCompany
+            })}>
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                        <Link href="/">
+                            <Button variant="ghost" size="icon">
+                                <ArrowLeft className="h-4 w-4" />
+                            </Button>
+                        </Link>
+                        <div>
+                            <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                                {city.name}
+                                <span className="text-lg text-muted-foreground font-normal">({city.short_code})</span>
+                            </h2>
+                            <p className="text-sm text-muted-foreground">{companyCount} companies registered</p>
+                        </div>
                     </div>
+
+                    {/* 3-dot menu */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={handleDelete}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete City
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
 
-                {/* 3-dot menu */}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={handleDelete}
-                        >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete City
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {/* Company Table Area */}
+                <div className="flex relative h-[calc(100vh-200px)]">
+                    <div className={`flex-1 min-w-0 transition-all duration-300 ${editingCompany ? 'pr-0' : ''}`}>
+                        <CompanyDataTable
+                            key={refreshKey}
+                            cityId={cityId}
+                            onAddCompany={() => setAddDialogOpen(true)}
+                            onEditCompany={setEditingCompany}
+                        />
+                    </div>
+
+                    {/* Edit Panel at Page Level */}
+                </div>
+
+
+
+                {/* Add Company Dialog */}
+                <AddCompanyDialog
+                    open={addDialogOpen}
+                    onOpenChange={setAddDialogOpen}
+                    cityId={cityId}
+                    onSuccess={handleCompanyAdded}
+                />
             </div>
-
-            {/* Company Table */}
-            <CompanyDataTable
-                key={refreshKey}
-                cityId={cityId}
-                onAddCompany={() => setAddDialogOpen(true)}
-            />
-
-            {/* Add Company Dialog */}
-            <AddCompanyDialog
-                open={addDialogOpen}
-                onOpenChange={setAddDialogOpen}
-                cityId={cityId}
-                onSuccess={handleCompanyAdded}
-            />
+            {editingCompany && (
+                <div className="w-[400px] h-full border-l border-border bg-background h-full shrink-0 animate-in slide-in-from-right duration-300">
+                    <EditCompanyPanel
+                        company={editingCompany}
+                        onClose={() => setEditingCompany(null)}
+                        onSuccess={() => {
+                            setRefreshKey(k => k + 1)
+                        }}
+                    />
+                </div>
+            )}
         </div>
     )
 }
