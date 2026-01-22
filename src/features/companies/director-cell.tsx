@@ -1,11 +1,11 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { Users, Phone, Mail, MessageSquare } from "lucide-react"
 
 interface Director {
@@ -30,13 +30,10 @@ export function DirectorCell({ directors }: DirectorCellProps) {
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Badge
-                    variant="outline"
-                    className="cursor-pointer hover:bg-accent transition-colors"
-                >
-                    <Users className="w-3 h-3 mr-1" />
-                    {directors.length} Director{directors.length > 1 ? "s" : ""}
-                </Badge>
+                <button className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded border border-border hover:bg-accent transition-colors">
+                    <Users className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">{directors.length}</span>
+                </button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0" align="start">
                 <div className="p-3 border-b">
@@ -71,12 +68,12 @@ export function DirectorCell({ directors }: DirectorCellProps) {
                                         <Mail className="w-3 h-3" />
                                         <span className="flex-1 truncate">{director.email}</span>
                                         {director.email_status && (
-                                            <Badge
-                                                variant={director.email_status === "valid" ? "default" : "secondary"}
-                                                className="text-[10px] px-1 py-0"
+                                            <StatusBadge
+                                                variant={director.email_status === "valid" ? "success" : director.email_status === "bounced" ? "error" : "muted"}
+                                                size="sm"
                                             >
                                                 {director.email_status}
-                                            </Badge>
+                                            </StatusBadge>
                                         )}
                                     </div>
                                 )}

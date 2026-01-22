@@ -59,6 +59,18 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-status-success: var(--status-success);
+  --color-status-success-foreground: var(--status-success-foreground);
+  --color-status-success-muted: var(--status-success-muted);
+  --color-status-warning: var(--status-warning);
+  --color-status-warning-foreground: var(--status-warning-foreground);
+  --color-status-warning-muted: var(--status-warning-muted);
+  --color-status-info: var(--status-info);
+  --color-status-info-foreground: var(--status-info-foreground);
+  --color-status-info-muted: var(--status-info-muted);
+  --color-status-neutral: var(--status-neutral);
+  --color-status-neutral-foreground: var(--status-neutral-foreground);
+  --color-status-neutral-muted: var(--status-neutral-muted);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -108,6 +120,21 @@
 
 :root {
   --radius: 0.875rem;
+
+  /* Status Colors - Semantic */
+  --status-success: oklch(0.72 0.19 142);
+  --status-success-foreground: oklch(0.98 0 0);
+  --status-success-muted: oklch(0.95 0.05 142);
+  --status-warning: oklch(0.75 0.18 85);
+  --status-warning-foreground: oklch(0.25 0.05 85);
+  --status-warning-muted: oklch(0.95 0.05 85);
+  --status-info: oklch(0.65 0.19 250);
+  --status-info-foreground: oklch(0.98 0 0);
+  --status-info-muted: oklch(0.95 0.05 250);
+  --status-neutral: oklch(0.55 0.02 270);
+  --status-neutral-foreground: oklch(0.98 0 0);
+  --status-neutral-muted: oklch(0.95 0.01 270);
+
   /* Neo-Soft UI Light Theme - Vibrant Primary Colors */
   --background: oklch(1 0 0);
   --foreground: oklch(0.15 0.02 270);
@@ -144,6 +171,20 @@
 }
 
 .dark {
+  /* Status Colors - Dark Theme */
+  --status-success: oklch(0.65 0.17 142);
+  --status-success-foreground: oklch(0.98 0 0);
+  --status-success-muted: oklch(0.25 0.05 142);
+  --status-warning: oklch(0.70 0.16 85);
+  --status-warning-foreground: oklch(0.15 0.05 85);
+  --status-warning-muted: oklch(0.25 0.05 85);
+  --status-info: oklch(0.60 0.17 250);
+  --status-info-foreground: oklch(0.98 0 0);
+  --status-info-muted: oklch(0.25 0.05 250);
+  --status-neutral: oklch(0.50 0.02 270);
+  --status-neutral-foreground: oklch(0.98 0 0);
+  --status-neutral-muted: oklch(0.25 0.01 270);
+
   --sidebar: oklch(0.1776 0 0);
   --foreground: oklch(0.9491 0 0);
   --card: oklch(0.38 0 none / 0.2);

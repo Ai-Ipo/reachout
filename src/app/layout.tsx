@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "IPO Outreach Dashboard",
@@ -22,10 +22,9 @@ export default function RootLayout({
             rel="stylesheet"
           />
         </head>
-        <body
-          className={`antialiased font-inter`}
-        >
+        <body className="antialiased font-sans">
           {children}
+          <Toaster position="bottom-right" />
         </body>
       </html>
     </ClerkProvider>
