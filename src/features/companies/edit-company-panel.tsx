@@ -65,7 +65,6 @@ interface Company {
     eligibility_status: string
     board_type?: string
     official_mail?: string
-    representative_name?: string
     calling_status: string
     response?: string
     whatsapp_status?: string
@@ -92,6 +91,12 @@ function generateFinancialYears(): string[] {
     return years
 }
 
+interface Profile {
+    id: string
+    full_name: string | null
+    email: string | null
+}
+
 export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPanelProps) {
     const [saving, setSaving] = useState(false)
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -101,7 +106,29 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
         contact: false,
         notes: false,
     })
+    const [telemarketers, setTelemarketers] = useState<Profile[]>([])
+    const [assignedTo, setAssignedTo] = useState<string | null>(company.assigned_to || null)
     const { getToken } = useAuth()
+
+    // Fetch telemarketers on mount
+    useEffect(() => {
+        async function fetchTelemarketers() {
+            const token = await getToken({ template: "supabase", skipCache: true })
+            const supabase = createClient(token)
+            const { data, error } = await supabase
+                .from("profiles")
+                .select("id, full_name, email")
+                .eq("role", "telemarketer")
+                .order("full_name")
+            if (error) {
+                console.error("Error fetching telemarketers:", error)
+            } else {
+                console.log("Fetched telemarketers:", data)
+                setTelemarketers(data || [])
+            }
+        }
+        fetchTelemarketers()
+    }, [getToken])
 
     const form = useForm<CompanyFormData>({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -118,7 +145,6 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
             eligibility_status: company.eligibility_status as "eligible" | "ineligible" | "pending" || "pending",
             board_type: company.board_type as "SME" | "Main" | "Other" | undefined,
             official_mail: company.official_mail || "",
-            representative_name: company.representative_name || "",
             calling_status: company.calling_status as "queued" | "picked_up" | "not_answered" | "not_contactable" | "interested" | "not_interested" || "queued",
             response: company.response || "",
             whatsapp_status: company.whatsapp_status as "not_sent" | "sent" | "delivered" | "read" | "replied" | "failed" | undefined,
@@ -155,7 +181,6 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
             eligibility_status: company.eligibility_status as "eligible" | "ineligible" | "pending" || "pending",
             board_type: company.board_type as "SME" | "Main" | "Other" | undefined,
             official_mail: company.official_mail || "",
-            representative_name: company.representative_name || "",
             calling_status: company.calling_status as "queued" | "picked_up" | "not_answered" | "not_contactable" | "interested" | "not_interested" || "queued",
             response: company.response || "",
             whatsapp_status: company.whatsapp_status as "not_sent" | "sent" | "delivered" | "read" | "replied" | "failed" | undefined,
@@ -192,7 +217,6 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                     eligibility_status: data.eligibility_status,
                     board_type: data.board_type || null,
                     official_mail: data.official_mail || null,
-                    representative_name: data.representative_name || null,
                     calling_status: data.calling_status,
                     response: data.response || null,
                     whatsapp_status: data.whatsapp_status || null,
@@ -379,6 +403,44 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                                         </FormItem>
                                     )}
                                 />
+                                <div>
+                                    <label className="text-xs text-muted-foreground">Assigned To</label>
+                                    <Select
+                                        value={assignedTo || "unassigned"}
+                                        onValueChange={async (value) => {
+                                            const newValue = value === "unassigned" ? null : value
+                                            setAssignedTo(newValue)
+                                            // Update immediately in database
+                                            const token = await getToken({ template: "supabase", skipCache: true })
+                                            const supabase = createClient(token)
+                                            await supabase
+                                                .from("companies")
+                                                .update({ assigned_to: newValue, updated_at: new Date().toISOString() })
+                                                .eq("id", company.id)
+                                        }}
+                                    >
+                                        <SelectTrigger className="h-8 text-sm mt-1">
+                                            <SelectValue placeholder="Select telemarketer" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="unassigned" className="text-sm text-muted-foreground">
+                                                Unassigned
+                                            </SelectItem>
+                                            {telemarketers.map((profile) => (
+                                                <SelectItem key={profile.id} value={profile.id} className="text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-5 h-5 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
+                                                            <span className="text-[10px] font-medium text-violet-600">
+                                                                {profile.full_name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || profile.email?.[0]?.toUpperCase() || "?"}
+                                                            </span>
+                                                        </div>
+                                                        {profile.full_name || profile.email?.split("@")[0] || "Unknown"}
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                                 <FormField
                                     control={form.control}
                                     name="website"
@@ -584,34 +646,19 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                             onToggle={() => toggleSection("contact")}
                         >
                             <div className="space-y-3 px-4 pb-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <FormField
-                                        control={form.control}
-                                        name="official_mail"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-xs text-muted-foreground">Official Email</FormLabel>
-                                                <FormControl>
-                                                    <Input type="email" {...field} className="h-8 text-sm" />
-                                                </FormControl>
-                                                <FormMessage className="text-[11px]" />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="representative_name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-xs text-muted-foreground">Representative</FormLabel>
-                                                <FormControl>
-                                                    <Input {...field} className="h-8 text-sm" />
-                                                </FormControl>
-                                                <FormMessage className="text-[11px]" />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
+                                <FormField
+                                    control={form.control}
+                                    name="official_mail"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-xs text-muted-foreground">Official Email</FormLabel>
+                                            <FormControl>
+                                                <Input type="email" {...field} className="h-8 text-sm" />
+                                            </FormControl>
+                                            <FormMessage className="text-[11px]" />
+                                        </FormItem>
+                                    )}
+                                />
                                 <div className="grid grid-cols-2 gap-3">
                                     <FormField
                                         control={form.control}

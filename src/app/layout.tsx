@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export const metadata: Metadata = {
   title: "IPO Outreach Dashboard",
@@ -23,8 +24,10 @@ export default function RootLayout({
           />
         </head>
         <body className="antialiased font-sans overflow-x-hidden">
-          {children}
-          <Toaster position="bottom-right" />
+          <TooltipProvider>
+            {children}
+            <Toaster position="bottom-right" />
+          </TooltipProvider>
         </body>
       </html>
     </ClerkProvider>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { createClient } from "@/lib/supabase/client"
@@ -56,9 +56,39 @@ interface AddCompanyDialogProps {
     onSuccess?: () => void
 }
 
+interface Profile {
+    id: string
+    full_name: string | null
+    email: string | null
+}
+
 export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddCompanyDialogProps) {
     const [saving, setSaving] = useState(false)
+    const [telemarketers, setTelemarketers] = useState<Profile[]>([])
+    const [assignedTo, setAssignedTo] = useState<string | null>(null)
     const { getToken } = useAuth()
+
+    // Fetch telemarketers when dialog opens
+    useEffect(() => {
+        if (open) {
+            async function fetchTelemarketers() {
+                const token = await getToken({ template: "supabase", skipCache: true })
+                const supabase = createClient(token)
+                const { data, error } = await supabase
+                    .from("profiles")
+                    .select("id, full_name, email")
+                    .eq("role", "telemarketer")
+                    .order("full_name")
+                if (error) {
+                    console.error("Error fetching telemarketers:", error)
+                } else {
+                    console.log("Fetched telemarketers:", data)
+                    setTelemarketers(data || [])
+                }
+            }
+            fetchTelemarketers()
+        }
+    }, [open, getToken])
 
     const form = useForm<CompanyFormData>({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,7 +104,6 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
             eligibility_status: "pending",
             board_type: undefined,
             official_mail: "",
-            representative_name: "",
             calling_status: "queued",
             response: "",
             whatsapp_status: undefined,
@@ -109,12 +138,12 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                     eligibility_status: data.eligibility_status,
                     board_type: data.board_type || null,
                     official_mail: data.official_mail || null,
-                    representative_name: data.representative_name || null,
                     calling_status: data.calling_status,
                     response: data.response || null,
                     whatsapp_status: data.whatsapp_status || null,
                     remarks: data.remarks || null,
                     website: data.website || null,
+                    assigned_to: assignedTo,
                 })
                 .select()
                 .single()
@@ -149,6 +178,7 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
 
             toast.success("Company created successfully")
             form.reset()
+            setAssignedTo(null)
             onOpenChange(false)
             onSuccess?.()
         } catch (error) {
@@ -291,6 +321,34 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                         </FormItem>
                                     )}
                                 />
+                                <div>
+                                    <label className="text-xs font-medium text-muted-foreground">Assigned To</label>
+                                    <Select
+                                        value={assignedTo || "unassigned"}
+                                        onValueChange={(value) => setAssignedTo(value === "unassigned" ? null : value)}
+                                    >
+                                        <SelectTrigger className="h-9 border-border text-sm mt-1">
+                                            <SelectValue placeholder="Select telemarketer" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="unassigned" className="text-sm text-muted-foreground">
+                                                Unassigned
+                                            </SelectItem>
+                                            {telemarketers.map((profile) => (
+                                                <SelectItem key={profile.id} value={profile.id} className="text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-5 h-5 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
+                                                            <span className="text-[10px] font-medium text-violet-600">
+                                                                {profile.full_name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || profile.email?.[0]?.toUpperCase() || "?"}
+                                                            </span>
+                                                        </div>
+                                                        {profile.full_name || profile.email?.split("@")[0] || "Unknown"}
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                                 <FormField
                                     control={form.control}
                                     name="website"
@@ -543,19 +601,6 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                             <FormLabel className="text-xs font-medium text-muted-foreground">Official Email</FormLabel>
                                             <FormControl>
                                                 <Input type="email" placeholder="info@company.com" {...field} className="h-9 border-border text-sm" />
-                                            </FormControl>
-                                            <FormMessage className="text-[11px]" />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="representative_name"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-xs font-medium text-muted-foreground">Representative</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="Contact person" {...field} className="h-9 border-border text-sm" />
                                             </FormControl>
                                             <FormMessage className="text-[11px]" />
                                         </FormItem>

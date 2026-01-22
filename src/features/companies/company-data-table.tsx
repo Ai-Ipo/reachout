@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback } from "react"
+import { useEffect, useState, useMemo, useCallback, useRef, useLayoutEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@clerk/nextjs"
 import {
@@ -14,17 +14,31 @@ import {
     type SortingState,
     type RowSelectionState,
     type ColumnFiltersState,
+    type VisibilityState,
 } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuCheckboxItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DirectorCell } from "./director-cell"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { QuickStatusSelect } from "./quick-status-select"
 import { QuickEligibilitySelect } from "./quick-eligibility-select"
 import { QuickWhatsappSelect } from "./quick-whatsapp-select"
 import { QuickBoardSelect } from "./quick-board-select"
+import { QuickAssignSelect } from "./quick-assign-select"
 import { formatCurrency, formatPercent, formatFinancialYear } from "@/lib/format"
-import { ArrowUpDown, Plus, Type, Hash, Building2, Users, Mail, Phone, MessageSquare } from "lucide-react"
+import { ArrowUpDown, Plus, Type, Hash, Building2, Users, Mail, Phone, Settings2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
@@ -36,6 +50,12 @@ export interface Director {
     email?: string
     email_status?: string
     remark?: string
+}
+
+export interface AssignedProfile {
+    id: string
+    full_name: string | null
+    email: string | null
 }
 
 export interface Company {
@@ -51,13 +71,13 @@ export interface Company {
     eligibility_status: string
     board_type?: string
     official_mail?: string
-    representative_name?: string
     calling_status: string
     response?: string
     whatsapp_status?: string
     remarks?: string
     website?: string
     assigned_to?: string | null
+    assigned_profile?: AssignedProfile | null
     directors: Director[]
 }
 
@@ -68,12 +88,62 @@ interface CompanyDataTableProps {
     onEditCompany?: (company: Company | null) => void
 }
 
+const TruncatedTooltipCell = ({ value, className }: { value: string | null | undefined, className?: string }) => {
+    const [isTruncated, setIsTruncated] = useState(false)
+    const ref = useRef<HTMLSpanElement>(null)
+
+    useLayoutEffect(() => {
+        const element = ref.current
+        if (!element) return
+
+        const checkTruncation = () => {
+            if (element) {
+                // Use a small threshold for sub-pixel rendering differences
+                setIsTruncated(element.scrollWidth > element.clientWidth + 0.5)
+            }
+        }
+
+        const observer = new ResizeObserver(checkTruncation)
+        observer.observe(element)
+        // Check immediately and on next frame to ensure layout is settled
+        checkTruncation()
+        requestAnimationFrame(checkTruncation)
+
+        return () => observer.disconnect()
+    }, [value])
+
+    if (!value) return <span className="text-muted-foreground">-</span>
+
+    const content = (
+        <span
+            ref={ref}
+            className={cn("truncate block w-full cursor-default min-w-0", className)}
+        >
+            {value}
+        </span>
+    )
+
+    if (!isTruncated) return content
+
+    return (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                {content}
+            </TooltipTrigger>
+            <TooltipContent>
+                <p className="max-w-[300px] break-words text-xs">{value}</p>
+            </TooltipContent>
+        </Tooltip>
+    )
+}
+
 export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompany }: CompanyDataTableProps) {
     const [companies, setCompanies] = useState<Company[]>([])
     const [loading, setLoading] = useState(true)
     const [sorting, setSorting] = useState<SortingState>([])
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
     const [globalFilter, setGlobalFilter] = useState("")
     const [totalCount, setTotalCount] = useState(0)
     const [pageSize, setPageSize] = useState(50)
@@ -108,9 +178,10 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                 </div>
             ),
             enableSorting: false,
+            enableHiding: false,
             size: 40,
         },
-        
+
         {
             accessorKey: "internal_id",
             header: () => (
@@ -125,6 +196,7 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                 </span>
             ),
             size: 90,
+            enableHiding: false,
         },
         {
             accessorKey: "name",
@@ -139,15 +211,17 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                 </button>
             ),
             cell: ({ row }) => (
-                <span className="font-medium text-foreground">{row.getValue("name")}</span>
+                <TruncatedTooltipCell value={row.getValue("name")} className="font-medium text-foreground" />
             ),
             size: 200,
+            minSize: 100,
+            enableHiding: false,
         },
         {
             accessorKey: "financial_year",
             header: ({ column }) => (
                 <button
-                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    className="flex items-center w-18 gap-1 hover:text-foreground transition-colors"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 >
                     <span>FY</span>
@@ -159,7 +233,7 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                     {formatFinancialYear(row.getValue("financial_year"))}
                 </span>
             ),
-            size: 70,
+            size: 100,
         },
         {
             accessorKey: "turnover",
@@ -222,7 +296,7 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                     className="flex items-center gap-1 hover:text-foreground transition-colors"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 >
-                    <span>Interest</span>
+                    <span className="text-xs">Interest</span>
                     <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />
                 </button>
             ),
@@ -301,21 +375,28 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                 </div>
             ),
             cell: ({ row }) => (
-                <span className="text-xs text-muted-foreground truncate max-w-[120px] block">
-                    {row.getValue("official_mail") || "-"}
-                </span>
+                <TruncatedTooltipCell value={row.getValue("official_mail")} className="text-xs text-muted-foreground" />
             ),
             size: 130,
+            minSize: 80,
         },
         {
-            accessorKey: "representative_name",
-            header: "Rep",
+            id: "assigned",
+            header: "Assigned",
             cell: ({ row }) => (
-                <span className="text-muted-foreground text-xs">
-                    {row.getValue("representative_name") || "-"}
-                </span>
+                <QuickAssignSelect
+                    companyId={row.original.id}
+                    currentAssignment={row.original.assigned_profile || null}
+                    onOptimisticUpdate={(profile) => {
+                        setCompanies(prev => prev.map(c =>
+                            c.id === row.original.id
+                                ? { ...c, assigned_to: profile?.id || null, assigned_profile: profile }
+                                : c
+                        ))
+                    }}
+                />
             ),
-            size: 90,
+            size: 120,
         },
         {
             accessorKey: "calling_status",
@@ -346,11 +427,10 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
             accessorKey: "response",
             header: "Response",
             cell: ({ row }) => (
-                <span className="text-xs text-muted-foreground truncate max-w-[100px] block">
-                    {row.getValue("response") || "-"}
-                </span>
+                <TruncatedTooltipCell value={row.getValue("response")} className="text-xs text-muted-foreground" />
             ),
             size: 100,
+            minSize: 100,
         },
         {
             accessorKey: "whatsapp_status",
@@ -359,8 +439,7 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                     className="flex items-center gap-1.5 hover:text-foreground transition-colors"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 >
-                    <MessageSquare className="h-3 w-3 text-muted-foreground" />
-                    <span>WhatsApp</span>
+                    <span className="text-[10px]">WhatsApp</span>
                     <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />
                 </button>
             ),
@@ -374,7 +453,7 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                     />
                 )
             },
-            size: 90,
+            size: 80,
         },
     ], [])
 
@@ -411,13 +490,13 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                 eligibility_status,
                 board_type,
                 official_mail,
-                representative_name,
                 calling_status,
                 response,
                 whatsapp_status,
                 remarks,
                 website,
                 assigned_to,
+                assigned_profile:profiles!assigned_to(id, full_name, email),
                 directors(id, din_no, name, contact_no, email, email_status, remark)
             `, { count: "exact" })
             .eq("city_id", cityId)
@@ -426,7 +505,14 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
         if (error) {
             console.error("Error fetching companies:", error)
         } else {
-            setCompanies(data || [])
+            // Transform data to handle Supabase returning profile as array
+            const transformed = (data || []).map(company => ({
+                ...company,
+                assigned_profile: Array.isArray(company.assigned_profile)
+                    ? company.assigned_profile[0] || null
+                    : company.assigned_profile || null
+            }))
+            setCompanies(transformed)
             setTotalCount(count || 0)
         }
         if (!silent) setLoading(false)
@@ -468,16 +554,23 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
         onRowSelectionChange: setRowSelection,
         onColumnFiltersChange: setColumnFilters,
         onGlobalFilterChange: setGlobalFilter,
+        onColumnVisibilityChange: setColumnVisibility,
+        columnResizeMode: "onChange",
         state: {
             sorting,
             rowSelection,
             columnFilters,
+            columnVisibility,
             globalFilter,
         },
         initialState: {
             pagination: {
                 pageSize,
             },
+        },
+        defaultColumn: {
+            minSize: 50,
+            maxSize: 500,
         },
     })
 
@@ -552,12 +645,43 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                                 <Plus className="w-3.5 h-3.5" />
                                 Add Company
                             </button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" className="h-7 w-7 p-0">
+                                        <Settings2 className="h-3.5 w-3.5" />
+                                        <span className="sr-only">View</span>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-[150px]">
+                                    {table
+                                        .getAllColumns()
+                                        .filter(
+                                            (column) =>
+                                                typeof column.accessorFn !== "undefined" && column.getCanHide()
+                                        )
+                                        .map((column) => {
+                                            return (
+                                                <DropdownMenuCheckboxItem
+                                                    key={column.id}
+                                                    className="capitalize text-xs"
+                                                    checked={column.getIsVisible()}
+                                                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                                                >
+                                                    {column.id.replace(/_/g, " ")}
+                                                </DropdownMenuCheckboxItem>
+                                            )
+                                        })}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                     </div>
 
                     {/* Table - Notion style */}
-                    <div className="border border-border overflow-x-auto rounded-sm bg-background">
-                        <table className="w-full text-sm border-collapse">
+                    <div className="border border-border overflow-x-auto rounded-sm bg-background max-w-[calc(100vw-16rem)]">
+                        <table
+                            className="text-sm border-collapse table-fixed"
+                            style={{ width: table.getTotalSize() }}
+                        >
                             <thead>
                                 {table.getHeaderGroups().map((headerGroup) => (
                                     <tr key={headerGroup.id} className="border-b border-gray-200 bg-gray-50/50">
@@ -565,7 +689,7 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                                             <th
                                                 key={header.id}
                                                 style={{ width: header.getSize() }}
-                                                className="h-9 px-2 text-left text-[13px] font-normal text-gray-500 border-r border-gray-200 last:border-r-0 select-none"
+                                                className="h-9 px-2 text-left text-[13px] font-normal text-gray-500 border-r border-gray-200 last:border-r-0 select-none relative group"
                                             >
                                                 {header.isPlaceholder
                                                     ? null
@@ -573,6 +697,16 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                                                         header.column.columnDef.header,
                                                         header.getContext()
                                                     )}
+                                                {header.column.getCanResize() && (
+                                                    <div
+                                                        onMouseDown={header.getResizeHandler()}
+                                                        onTouchStart={header.getResizeHandler()}
+                                                        className={cn(
+                                                            "absolute right-0 top-0 h-full w-1 bg-border/50 cursor-col-resize touch-none select-none opacity-0 group-hover:opacity-100 transition-opacity",
+                                                            header.column.getIsResizing() && "bg-blue-500 opacity-100 w-1.5"
+                                                        )}
+                                                    />
+                                                )}
                                             </th>
                                         ))}
                                     </tr>
@@ -593,7 +727,8 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                                             {row.getVisibleCells().map((cell) => (
                                                 <td
                                                     key={cell.id}
-                                                    className="h-9 px-2 border-r border-gray-100 last:border-r-0 text-[13px] text-gray-700 data-[state=selected]:border-blue-100"
+                                                    style={{ width: cell.column.getSize() }}
+                                                    className="h-9 px-2 border-r border-gray-100 last:border-r-0 text-[13px] text-gray-700 data-[state=selected]:border-blue-100 overflow-hidden"
                                                 >
                                                     {flexRender(
                                                         cell.column.columnDef.cell,
