@@ -76,3 +76,9 @@ CREATE POLICY "Everyone can view directors"
 ON directors FOR SELECT
 TO authenticated
 USING (true);
+
+CREATE POLICY "Admins can manage directors"
+ON directors FOR ALL
+TO authenticated
+USING ((auth.jwt() ->> 'app_role') = 'admin')
+WITH CHECK ((auth.jwt() ->> 'app_role') = 'admin');

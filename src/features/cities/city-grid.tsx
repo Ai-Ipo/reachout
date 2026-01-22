@@ -11,6 +11,8 @@ import { CityDialog } from "./city-dialog"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 
+import { Skeleton } from "@/components/ui/skeleton"
+
 interface CityStats {
     id: string
     name: string
@@ -83,47 +85,57 @@ export function CityGrid() {
                     <h2 className="text-3xl font-bold tracking-tight">City Operations</h2>
                     <p className="text-muted-foreground">Manage lead generation campaigns by location</p>
                 </div>
-            <CityDialog open={dialogOpen} onOpenChange={setDialogOpen} onSuccess={fetchCities} />
-
+                <CityDialog open={dialogOpen} onOpenChange={setDialogOpen} onSuccess={fetchCities} />
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {cities.map((city) => (
-                    <Link href={`/admin/cities/${city.id}`} key={city.id}>
-                        <Card className="hover:bg-muted/50 transition-colors cursor-pointer h-full">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-xl font-bold">{city.name}</CardTitle>
-                                <Badge variant="outline" className="font-mono">{city.short_code}</Badge>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="mt-4 flex items-center space-x-4 text-sm text-muted-foreground">
-                                    <div className="flex items-center">
-                                        <Building2 className="mr-1 h-4 w-4 text-primary" />
-                                        <span className="font-medium text-foreground">{city.total_companies}</span>
-                                        <span className="ml-1">Companies</span>
-                                    </div>
-                                    {/* Placeholder for future assigned stats
-                  <div className="flex items-center">
-                    <Users className="mr-1 h-4 w-4" />
-                    <span>{city.assigned_companies} Assigned</span>
-                  </div>
-                  */}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </Link>
-                ))}
+                {loading ? (
+                    // Skeleton Loading State
+                    Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="h-[180px] rounded-xl border border-border bg-card p-6 shadow-sm">
+                            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <Skeleton className="h-6 w-32" />
+                                <Skeleton className="h-5 w-12 rounded-full" />
+                            </div>
+                            <div className="mt-4 space-y-3">
+                                <Skeleton className="h-4 w-24" />
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <>
+                        {cities.map((city) => (
+                            <Link href={`/admin/cities/${city.id}`} key={city.id}>
+                                <Card className="hover:bg-muted/50 transition-colors cursor-pointer h-full">
+                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                        <CardTitle className="text-xl font-bold">{city.name}</CardTitle>
+                                        <Badge variant="outline" className="font-mono">{city.short_code}</Badge>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="mt-4 flex items-center space-x-4 text-sm text-muted-foreground">
+                                            <div className="flex items-center">
+                                                <Building2 className="mr-1 h-4 w-4 text-primary" />
+                                                <span className="font-medium text-foreground">{city.total_companies}</span>
+                                                <span className="ml-1">Companies</span>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </Link>
+                        ))}
 
-                {/* Empty State / Add New Card */}
-                <div
-                    onClick={() => setDialogOpen(true)}
-                    className="flex h-full min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed hover:bg-muted/50 transition-colors"
-                >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                        <Plus className="h-5 w-5" />
-                    </div>
-                    <p className="mt-2 text-sm font-medium text-muted-foreground">Add New City</p>
-                </div>
+                        {/* Empty State / Add New Card */}
+                        <div
+                            onClick={() => setDialogOpen(true)}
+                            className="flex h-full min-h-[160px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed hover:bg-muted/50 transition-colors"
+                        >
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                                <Plus className="h-5 w-5" />
+                            </div>
+                            <p className="mt-2 text-sm font-medium text-muted-foreground">Add New City</p>
+                        </div>
+                    </>
+                )}
             </div>
 
         </div>

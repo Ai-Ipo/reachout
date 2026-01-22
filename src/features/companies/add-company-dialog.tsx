@@ -1,16 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@clerk/nextjs"
+import { toast } from "sonner"
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet"
 import {
     Form,
     FormControl,
@@ -18,6 +19,7 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
+    FormDescription,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -29,8 +31,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { companyFormSchema, type CompanyFormData, callingStatusLabels, eligibilityStatusLabels } from "@/lib/schemas/company-schema"
-import { Plus, Trash2 } from "lucide-react"
+import {
+    companyFormSchema,
+    type CompanyFormData,
+    callingStatusLabels,
+    eligibilityStatusLabels,
+    boardTypeLabels,
+    whatsappStatusLabels,
+} from "@/lib/schemas/company-schema"
+import { Plus, Building2, Users, FileText, Phone, IndianRupee, Globe, X, Trash2 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface AddCompanyDialogProps {
     open: boolean
@@ -55,32 +65,22 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
             borrowed_funds: "",
             loan_interest: "",
             eligibility_status: "pending",
-            board_type: "",
+            board_type: undefined,
             official_mail: "",
             representative_name: "",
             calling_status: "queued",
             response: "",
-            whatsapp_status: "",
+            whatsapp_status: undefined,
             remarks: "",
             website: "",
-            directors: [{ name: "", din_no: "", contact_no: "", email: "", remark: "" }],
+            directors: [],
         },
     })
 
-    const directors = form.watch("directors") || []
-
-    function addDirector() {
-        if (directors.length < 3) {
-            form.setValue("directors", [
-                ...directors,
-                { name: "", din_no: "", contact_no: "", email: "", remark: "" },
-            ])
-        }
-    }
-
-    function removeDirector(index: number) {
-        form.setValue("directors", directors.filter((_, i) => i !== index))
-    }
+    const { fields: directors, append: addDirector, remove: removeDirector } = useFieldArray({
+        control: form.control,
+        name: "directors",
+    })
 
     async function onSubmit(data: CompanyFormData) {
         setSaving(true)
@@ -88,7 +88,7 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
             const token = await getToken({ template: "supabase", skipCache: true })
             const supabase = createClient(token)
 
-            // Insert company - convert string numbers to actual numbers
+            // Insert company
             const { data: company, error: companyError } = await supabase
                 .from("companies")
                 .insert({
@@ -114,10 +114,10 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
 
             if (companyError) throw companyError
 
-            // Insert directors
+            // Insert directors if any
             if (data.directors && data.directors.length > 0 && company) {
                 const directorsToInsert = data.directors
-                    .filter(d => d.name) // Only insert directors with names
+                    .filter(d => d.name && d.name.trim() !== "")
                     .map(d => ({
                         company_id: company.id,
                         din_no: d.din_no || null,
@@ -133,58 +133,102 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                         .from("directors")
                         .insert(directorsToInsert)
 
-                    if (directorError) console.error("Director insert error:", directorError)
+                    if (directorError) {
+                        console.error("Director insert error:", directorError)
+                        toast.error("Company created but failed to add some directors")
+                    }
                 }
             }
 
+            toast.success("Company created successfully")
             form.reset()
             onOpenChange(false)
             onSuccess?.()
         } catch (error) {
             console.error("Error creating company:", error)
-            alert("Failed to create company")
+            toast.error("Failed to create company. Please try again.")
         } finally {
             setSaving(false)
         }
     }
 
+    function handleAddDirector() {
+        if (directors.length < 3) {
+            addDirector({ name: "", din_no: "", contact_no: "", email: "", remark: "" })
+        }
+    }
+
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>Add New Company</DialogTitle>
-                </DialogHeader>
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent
+                side="right"
+                className="w-full sm:max-w-[800px] p-0 flex flex-col bg-background sm:border-l sm:border-border shadow-xl"
+            >
+                {/* Header */}
+                <SheetHeader className="px-6 py-5 border-b border-border/60 flex-shrink-0 bg-background z-10 flex flex-row items-center gap-4 space-y-0">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onOpenChange(false)}
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent -ml-2 rounded-full"
+                    >
+                        <X className="w-4 h-4" />
+                    </Button>
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 bg-primary/5 rounded-lg flex items-center justify-center border border-primary/10">
+                            <Building2 className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="space-y-0.5">
+                            <SheetTitle className="text-lg font-semibold text-foreground">Add New Company</SheetTitle>
+                            <p className="text-[13px] text-muted-foreground font-normal">Enter the details for the new company record</p>
+                        </div>
+                    </div>
+                </SheetHeader>
 
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto">
+                    <Form {...form}>
+                        <form id="company-form" onSubmit={form.handleSubmit(onSubmit)} className="p-6 pb-20 space-y-8">
 
-                        {/* Basic Info Section */}
-                        <section className="space-y-4">
-                            <h3 className="text-sm font-medium text-muted-foreground border-b pb-2">Basic Information</h3>
-                            <FormField
-                                control={form.control}
-                                name="name"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Company Name *</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Enter company name" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {/* Basic Information */}
+                            <Section title="Basic Information" description="Primary details about the company structure">
+                                <FormField
+                                    control={form.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                        <FormItem className="col-span-2">
+                                            <FormLabel className="text-xs font-medium text-muted-foreground">Company Name <span className="text-destructive">*</span></FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    placeholder="e.g. Acme Industries Pvt Ltd"
+                                                    {...field}
+                                                    className="h-9 border-border focus:border-primary focus:ring-primary/20 placeholder:text-muted-foreground/40"
+                                                />
+                                            </FormControl>
+                                            <FormMessage className="text-[11px]" />
+                                        </FormItem>
+                                    )}
+                                />
                                 <FormField
                                     control={form.control}
                                     name="financial_year"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Financial Year</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="2023-24" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
+                                            <FormLabel className="text-xs font-medium text-muted-foreground">Financial Year</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger className="h-9 border-border text-sm">
+                                                        <SelectValue placeholder="Select FY" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {generateFinancialYears().map((fy) => (
+                                                        <SelectItem key={fy} value={fy} className="text-sm">{fy}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage className="text-[11px]" />
                                         </FormItem>
                                     )}
                                 />
@@ -193,11 +237,20 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                     name="board_type"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Board Type</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="SME / Main" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
+                                            <FormLabel className="text-xs font-medium text-muted-foreground">Board Type</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger className="h-9 border-border text-sm">
+                                                        <SelectValue placeholder="Select board" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {Object.entries(boardTypeLabels).map(([value, label]) => (
+                                                        <SelectItem key={value} value={value} className="text-sm">{label}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage className="text-[11px]" />
                                         </FormItem>
                                     )}
                                 />
@@ -206,62 +259,66 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                     name="eligibility_status"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Eligibility</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormLabel className="text-xs font-medium text-muted-foreground">Eligibility Status</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select" />
+                                                    <SelectTrigger className="h-9 border-border text-sm">
+                                                        <SelectValue placeholder="Select status" />
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
                                                     {Object.entries(eligibilityStatusLabels).map(([value, label]) => (
-                                                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                                                        <SelectItem key={value} value={value} className="text-sm">{label}</SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
-                                            <FormMessage />
+                                            <FormMessage className="text-[11px]" />
                                         </FormItem>
                                     )}
                                 />
                                 <FormField
                                     control={form.control}
-                                    name="calling_status"
+                                    name="website"
                                     render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Calling Status</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {Object.entries(callingStatusLabels).map(([value, label]) => (
-                                                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
+                                        <FormItem className="col-span-1">
+                                            <FormLabel className="text-xs font-medium text-muted-foreground">Website</FormLabel>
+                                            <FormControl>
+                                                <div className="relative">
+                                                    <Globe className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+                                                    <Input placeholder="company.com" {...field} className="h-9 pl-8 border-border text-sm" />
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage className="text-[11px]" />
                                         </FormItem>
                                     )}
                                 />
-                            </div>
-                        </section>
+                            </Section>
 
-                        {/* Financials Section */}
-                        <section className="space-y-4">
-                            <h3 className="text-sm font-medium text-muted-foreground border-b pb-2">Financials</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="h-px bg-border/40" />
+
+                            {/* Financials */}
+                            <Section title="Financials" description="Key financial metrics">
                                 <FormField
                                     control={form.control}
                                     name="turnover"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Turnover (₹ Cr)</FormLabel>
+                                            <FormLabel className="text-xs font-medium text-muted-foreground">Turnover</FormLabel>
                                             <FormControl>
-                                                <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                                                <div className="relative">
+                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground/50 font-medium">₹</span>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        placeholder="0.00"
+                                                        {...field}
+                                                        className="h-9 pl-6 pr-8 border-border text-sm tabular-nums"
+                                                    />
+                                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground/50 font-medium">Cr</span>
+                                                </div>
                                             </FormControl>
-                                            <FormMessage />
+                                            <FormMessage className="text-[11px]" />
                                         </FormItem>
                                     )}
                                 />
@@ -270,11 +327,21 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                     name="profit"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Profit (₹ Cr)</FormLabel>
+                                            <FormLabel className="text-xs font-medium text-muted-foreground">Profit</FormLabel>
                                             <FormControl>
-                                                <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                                                <div className="relative">
+                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground/60 font-medium">₹</span>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        placeholder="0.00"
+                                                        {...field}
+                                                        className="h-9 pl-6 pr-8 border-border text-sm tabular-nums"
+                                                    />
+                                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground/60 font-medium">Cr</span>
+                                                </div>
                                             </FormControl>
-                                            <FormMessage />
+                                            <FormMessage className="text-[11px]" />
                                         </FormItem>
                                     )}
                                 />
@@ -283,11 +350,22 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                     name="borrowed_funds"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Borrowed Funds (₹ Cr)</FormLabel>
+                                            <FormLabel className="text-xs font-medium text-muted-foreground">Borrowed Funds</FormLabel>
                                             <FormControl>
-                                                <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                                                <div className="relative">
+                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground/50 font-medium">₹</span>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        placeholder="0.00"
+                                                        {...field}
+                                                        className="h-9 pl-6 pr-8 border-border text-sm tabular-nums"
+                                                    />
+                                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground/50 font-medium">Cr</span>
+                                                </div>
                                             </FormControl>
-                                            <FormMessage />
+                                            <FormMessage className="text-[11px]" />
                                         </FormItem>
                                     )}
                                 />
@@ -296,118 +374,162 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                     name="loan_interest"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Loan Interest (%)</FormLabel>
+                                            <FormLabel className="text-xs font-medium text-muted-foreground">Loan Interest</FormLabel>
                                             <FormControl>
-                                                <Input type="number" step="0.1" placeholder="0.0" {...field} />
+                                                <div className="relative">
+                                                    <Input
+                                                        type="number"
+                                                        step="0.1"
+                                                        min="0"
+                                                        max="100"
+                                                        placeholder="0.0"
+                                                        {...field}
+                                                        className="h-9 pr-8 border-border text-sm tabular-nums"
+                                                    />
+                                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground/60 font-medium">%</span>
+                                                </div>
                                             </FormControl>
-                                            <FormMessage />
+                                            <FormMessage className="text-[11px]" />
                                         </FormItem>
                                     )}
                                 />
-                            </div>
-                        </section>
+                            </Section>
 
-                        {/* Directors Section */}
-                        <section className="space-y-4">
-                            <div className="flex items-center justify-between border-b pb-2">
-                                <h3 className="text-sm font-medium text-muted-foreground">Directors (max 3)</h3>
-                                {directors.length < 3 && (
-                                    <Button type="button" variant="ghost" size="sm" onClick={addDirector}>
-                                        <Plus className="w-4 h-4 mr-1" />
-                                        Add
-                                    </Button>
-                                )}
-                            </div>
-                            {directors.map((_, index) => (
-                                <div key={index} className="p-4 border rounded-lg space-y-3 bg-muted/30">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium">Director {index + 1}</span>
-                                        {directors.length > 1 && (
-                                            <Button type="button" variant="ghost" size="sm" onClick={() => removeDirector(index)}>
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                        <FormField
-                                            control={form.control}
-                                            name={`directors.${index}.name`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-xs">Name</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="Director name" {...field} />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name={`directors.${index}.din_no`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-xs">DIN</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="DIN number" {...field} />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name={`directors.${index}.contact_no`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-xs">Contact</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="+91 98765 43210" {...field} />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name={`directors.${index}.email`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-xs">Email</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="email@company.com" {...field} />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-                                    <FormField
-                                        control={form.control}
-                                        name={`directors.${index}.remark`}
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-xs">Remark</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Notes about this director" {...field} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
+                            <div className="h-px bg-border/40" />
+
+                            {/* Directors */}
+                            <Section
+                                title="Directors"
+                                description="Add up to 3 directors"
+                                action={
+                                    directors.length < 3 && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleAddDirector}
+                                            className="h-7 text-xs text-primary hover:bg-primary/5 font-medium"
+                                        >
+                                            <Plus className="w-3.5 h-3.5 mr-1" />
+                                            Add Director
+                                        </Button>
+                                    )
+                                }
+                            >
+                                <div className="col-span-2 space-y-3">
+                                    {directors.length === 0 ? (
+                                        <div
+                                            onClick={handleAddDirector}
+                                            className="flex flex-col items-center justify-center py-8 border border-dashed border-border rounded-lg hover:border-primary/30 hover:bg-primary/5 cursor-pointer transition-colors group"
+                                        >
+                                            <div className="h-10 w-10 bg-muted rounded-full flex items-center justify-center mb-2 group-hover:bg-primary/10 transition-colors">
+                                                <Users className="w-5 h-5 text-muted-foreground/50 group-hover:text-primary" />
+                                            </div>
+                                            <p className="text-sm font-medium text-muted-foreground group-hover:text-primary">Click to add a director</p>
+                                            <p className="text-xs text-muted-foreground/60 mt-1">You can add up to 3 directors</p>
+                                        </div>
+                                    ) : (
+                                        directors.map((field, index) => (
+                                            <div key={field.id} className="p-4 border border-border/50 bg-muted/20 rounded-lg space-y-4 group hover:border-border transition-colors">
+                                                <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                                                    <span className="text-xs font-semibold text-foreground/80 flex items-center gap-2">
+                                                        <span className="h-5 w-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[10px]">
+                                                            {index + 1}
+                                                        </span>
+                                                        Director Details
+                                                    </span>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => removeDirector(index)}
+                                                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`directors.${index}.name`}
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormControl>
+                                                                    <Input placeholder="Name" {...field} className="h-8 text-sm bg-background" />
+                                                                </FormControl>
+                                                                <FormMessage className="text-[11px]" />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`directors.${index}.din_no`}
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormControl>
+                                                                    <Input placeholder="DIN No" maxLength={8} {...field} className="h-8 text-sm bg-background font-mono" />
+                                                                </FormControl>
+                                                                <FormMessage className="text-[11px]" />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`directors.${index}.contact_no`}
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormControl>
+                                                                    <Input placeholder="Phone" {...field} className="h-8 text-sm bg-background" />
+                                                                </FormControl>
+                                                                <FormMessage className="text-[11px]" />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`directors.${index}.email`}
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormControl>
+                                                                    <Input type="email" placeholder="Email" {...field} className="h-8 text-sm bg-background" />
+                                                                </FormControl>
+                                                                <FormMessage className="text-[11px]" />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`directors.${index}.remark`}
+                                                        render={({ field }) => (
+                                                            <FormItem className="col-span-2">
+                                                                <FormControl>
+                                                                    <Input placeholder="Optional notes for this director" {...field} className="h-8 text-sm bg-background" />
+                                                                </FormControl>
+                                                                <FormMessage className="text-[11px]" />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
-                            ))}
-                        </section>
+                            </Section>
 
-                        {/* Contact & Notes Section */}
-                        <section className="space-y-4">
-                            <h3 className="text-sm font-medium text-muted-foreground border-b pb-2">Contact & Notes</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div className="h-px bg-border/40" />
+
+                            {/* Contact & Status */}
+                            <Section title="Contact & Status" description="Communication details and current status">
                                 <FormField
                                     control={form.control}
                                     name="official_mail"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Official Email</FormLabel>
+                                            <FormLabel className="text-xs font-medium text-muted-foreground">Official Email</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="info@company.com" {...field} />
+                                                <Input type="email" placeholder="info@company.com" {...field} className="h-9 border-border text-sm" />
                                             </FormControl>
-                                            <FormMessage />
+                                            <FormMessage className="text-[11px]" />
                                         </FormItem>
                                     )}
                                 />
@@ -416,39 +538,55 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                     name="representative_name"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Representative</FormLabel>
+                                            <FormLabel className="text-xs font-medium text-muted-foreground">Representative</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Contact person" {...field} />
+                                                <Input placeholder="Contact person" {...field} className="h-9 border-border text-sm" />
                                             </FormControl>
-                                            <FormMessage />
+                                            <FormMessage className="text-[11px]" />
                                         </FormItem>
                                     )}
                                 />
                                 <FormField
                                     control={form.control}
-                                    name="website"
+                                    name="calling_status"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Website</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="https://company.com" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
+                                            <FormLabel className="text-xs font-medium text-muted-foreground">Calling Status</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger className="h-9 border-border text-sm">
+                                                        <SelectValue placeholder="Select status" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {Object.entries(callingStatusLabels).map(([value, label]) => (
+                                                        <SelectItem key={value} value={value} className="text-sm">{label}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage className="text-[11px]" />
                                         </FormItem>
                                     )}
                                 />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
                                 <FormField
                                     control={form.control}
                                     name="whatsapp_status"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>WhatsApp Status</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="Sent / Replied / etc." {...field} />
-                                            </FormControl>
-                                            <FormMessage />
+                                            <FormLabel className="text-xs font-medium text-muted-foreground">WhatsApp Status</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger className="h-9 border-border text-sm">
+                                                        <SelectValue placeholder="Select status" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {Object.entries(whatsappStatusLabels).map(([value, label]) => (
+                                                        <SelectItem key={value} value={value} className="text-sm">{label}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage className="text-[11px]" />
                                         </FormItem>
                                     )}
                                 />
@@ -456,42 +594,107 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                     control={form.control}
                                     name="response"
                                     render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Response</FormLabel>
+                                        <FormItem className="col-span-2">
+                                            <FormLabel className="text-xs font-medium text-muted-foreground">Response</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Any response received" {...field} />
+                                                <Input placeholder="Latest response or notes on contact..." {...field} className="h-9 border-border text-sm" />
                                             </FormControl>
-                                            <FormMessage />
+                                            <FormMessage className="text-[11px]" />
                                         </FormItem>
                                     )}
                                 />
-                            </div>
-                            <FormField
-                                control={form.control}
-                                name="remarks"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Internal Remarks</FormLabel>
-                                        <FormControl>
-                                            <Textarea placeholder="Internal notes about this company" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </section>
+                            </Section>
 
-                        <div className="flex justify-end gap-2 pt-4 border-t">
-                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={saving}>
-                                {saving ? "Creating..." : "Create Company"}
-                            </Button>
-                        </div>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
+                            <div className="h-px bg-border/40" />
+
+                            {/* Internal Notes */}
+                            <Section title="Notes" description="Internal team remarks">
+                                <FormField
+                                    control={form.control}
+                                    name="remarks"
+                                    render={({ field }) => (
+                                        <FormItem className="col-span-2">
+                                            <FormControl>
+                                                <Textarea
+                                                    placeholder="Add any internal remarks here..."
+                                                    {...field}
+                                                    className="min-h-[80px] resize-none border-border text-sm bg-muted/20"
+                                                />
+                                            </FormControl>
+                                            <FormMessage className="text-[11px]" />
+                                        </FormItem>
+                                    )}
+                                />
+                            </Section>
+                        </form>
+                    </Form>
+                </div>
+
+                {/* Footer */}
+                <div className="flex-shrink-0 px-6 py-4 border-t border-border/60 bg-background flex items-center justify-end gap-3 z-10">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => onOpenChange(false)}
+                        disabled={saving}
+                        className="h-9 text-muted-foreground hover:text-foreground"
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        type="submit"
+                        form="company-form"
+                        disabled={saving}
+                        className="h-9 min-w-[120px] font-medium shadow-sm hover:shadow"
+                    >
+                        {saving ? "Creating..." : "Create Company"}
+                    </Button>
+                </div>
+            </SheetContent>
+        </Sheet>
     )
 }
+
+// Simplified Section component
+function Section({
+    title,
+    description,
+    children,
+    action
+}: {
+    title: string
+    description?: string
+    children: React.ReactNode
+    action?: React.ReactNode
+}) {
+    return (
+        <section className="space-y-4">
+            <div className="flex items-start justify-between">
+                <div className="space-y-0.5">
+                    <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+                    {description && <p className="text-[11px] text-muted-foreground/70">{description}</p>}
+                </div>
+                {action}
+            </div>
+            <div className="grid grid-cols-2 gap-4 gap-y-5">
+                {children}
+            </div>
+        </section>
+    )
+}
+
+// Generate financial years in Indian format (YYYY-YY)
+// Returns last 10 years plus next year
+function generateFinancialYears(): string[] {
+    const currentYear = new Date().getFullYear()
+    const years: string[] = []
+
+    // Generate from next year to 10 years back
+    for (let year = currentYear + 1; year >= currentYear - 100; year--) {
+        const nextYearShort = (year + 1).toString().slice(-2)
+        years.push(`${year}-${nextYearShort}`)
+    }
+
+    return years
+}
+

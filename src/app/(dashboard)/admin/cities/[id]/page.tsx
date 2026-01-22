@@ -16,6 +16,8 @@ import {
 import { ArrowLeft, MoreVertical, Trash2 } from "lucide-react"
 import Link from "next/link"
 
+import { Skeleton } from "@/components/ui/skeleton"
+
 export default function CityDetailPage() {
     const params = useParams()
     const cityId = params?.id as string
@@ -72,7 +74,46 @@ export default function CityDetailPage() {
         fetchCity() // Update count
     }
 
-    if (!city) return <div className="p-8">Loading city...</div>
+    if (!city) return (
+        <div className="flex-1 space-y-6 p-8 pt-6">
+            {/* Header Skeleton */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                    <Skeleton className="h-9 w-9 rounded-md" />
+                    <div className="space-y-2">
+                        <Skeleton className="h-8 w-48" />
+                        <Skeleton className="h-4 w-32" />
+                    </div>
+                </div>
+                <Skeleton className="h-9 w-9 rounded-md" />
+            </div>
+
+            {/* Table Skeleton */}
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <Skeleton className="h-9 w-[250px]" />
+                    <div className="flex items-center gap-2">
+                        <Skeleton className="h-9 w-[100px]" />
+                        <Skeleton className="h-9 w-[100px]" />
+                        <Skeleton className="h-9 w-[100px]" />
+                    </div>
+                </div>
+                <div className="rounded-md border">
+                    <div className="h-12 border-b bg-muted/50 px-4" />
+                    {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="flex items-center space-x-4 p-4 border-b last:border-0">
+                            <Skeleton className="h-4 w-[200px]" />
+                            <Skeleton className="h-4 w-[100px]" />
+                            <Skeleton className="h-4 w-[150px]" />
+                            <div className="ml-auto">
+                                <Skeleton className="h-8 w-8 rounded-md" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    )
 
     return (
         <div className="flex-1 space-y-6 p-8 pt-6">
