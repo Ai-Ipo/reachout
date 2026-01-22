@@ -6,7 +6,7 @@ interface PageProps {
     params: Promise<{ id: string }>
 }
 
-export default async function TelemarketerCompanyPage({ params }: PageProps) {
+export default async function AdminCompanyPage({ params }: PageProps) {
     const { id } = await params
     const supabase = await createClient()
 
@@ -33,11 +33,5 @@ export default async function TelemarketerCompanyPage({ params }: PageProps) {
             : company.assigned_profile || null
     }
 
-    return (
-        <CompanyPage
-            company={transformedCompany}
-            backUrl="/telemarketer/start"
-            backLabel="Back to Assignments"
-        />
-    )
+    return <CompanyPage company={transformedCompany} />
 }

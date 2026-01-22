@@ -10,6 +10,7 @@ import { Plus, MapPin, Building2, Users } from "lucide-react"
 import { CityDialog } from "./city-dialog"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
+import { CityGridSkeleton } from "./city-grid-skeleton"
 
 interface CityStats {
     id: string
@@ -76,6 +77,10 @@ export function CityGrid() {
         fetchCities()
     }, [])
 
+    if (loading) {
+        return <CityGridSkeleton />
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -83,7 +88,7 @@ export function CityGrid() {
                     <h2 className="text-3xl font-bold tracking-tight">City Operations</h2>
                     <p className="text-muted-foreground">Manage lead generation campaigns by location</p>
                 </div>
-            <CityDialog open={dialogOpen} onOpenChange={setDialogOpen} onSuccess={fetchCities} />
+                <CityDialog open={dialogOpen} onOpenChange={setDialogOpen} onSuccess={fetchCities} />
 
             </div>
 

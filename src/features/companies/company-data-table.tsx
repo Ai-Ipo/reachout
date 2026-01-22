@@ -38,7 +38,8 @@ import { QuickWhatsappSelect } from "./quick-whatsapp-select"
 import { QuickBoardSelect } from "./quick-board-select"
 import { QuickAssignSelect } from "./quick-assign-select"
 import { formatCurrency, formatPercent, formatFinancialYear } from "@/lib/format"
-import { ArrowUpDown, Plus, Type, Hash, Building2, Users, Mail, Phone, Settings2 } from "lucide-react"
+import { ArrowUpDown, Plus, Type, Hash, Building2, Users, Mail, Phone, Settings2, ExternalLink } from "lucide-react"
+import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
@@ -191,11 +192,17 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                 </div>
             ),
             cell: ({ row }) => (
-                <span className="font-mono text-xs text-muted-foreground">
+                <Link
+                    href={`/admin/companies/${row.original.id}`}
+                    target="_blank"
+                    className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 decoration-muted-foreground/30 hover:decoration-muted-foreground/50"
+                    onClick={(e) => e.stopPropagation()}
+                >
                     {row.getValue("internal_id") || "-"}
-                </span>
+                    <ExternalLink className="w-3 h-3 opacity-50" />
+                </Link>
             ),
-            size: 90,
+            size: 100,
             enableHiding: false,
         },
         {
@@ -210,9 +217,22 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                     <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />
                 </button>
             ),
-            cell: ({ row }) => (
-                <TruncatedTooltipCell value={row.getValue("name")} className="font-medium text-foreground" />
-            ),
+            cell: ({ row }) => {
+                const name = row.getValue("name") as string
+                return (
+                    <Link
+                        href={`/admin/companies/${row.original.id}`}
+                        target="_blank"
+                        className="group inline-flex items-center gap-1 max-w-full"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <span className="font-medium text-foreground underline underline-offset-2 decoration-muted-foreground/30 hover:decoration-muted-foreground/50 truncate">
+                            {name}
+                        </span>
+                        <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-50 flex-shrink-0 text-muted-foreground" />
+                    </Link>
+                )
+            },
             size: 200,
             minSize: 100,
             enableHiding: false,

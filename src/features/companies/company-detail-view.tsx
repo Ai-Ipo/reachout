@@ -155,10 +155,9 @@ export function CompanyDetailView({ company }: CompanyDetailProps) {
             <div className="flex-1 bg-white dark:bg-zinc-900 rounded-xl border overflow-hidden relative">
                 {company.website ? (
                     <iframe
-                        src={company.website.startsWith('http') ? company.website : `https://${company.website}`}
+                        src={company.website}
                         className="w-full h-full"
                         title="Company Website"
-                        sandbox="allow-scripts allow-same-origin" // Security
                     />
                 ) : (
                     <div className="flex items-center justify-center h-full text-muted-foreground">

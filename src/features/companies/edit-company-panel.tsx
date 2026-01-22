@@ -33,6 +33,7 @@ import {
     whatsappStatusLabels,
 } from "@/lib/schemas/company-schema"
 import { X, Plus, Trash2, ChevronDown, ChevronRight, Globe, Loader2 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 import {
     StatusBadge,
@@ -285,6 +286,16 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
         setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
     }
 
+    // Check if a section has errors
+    const { errors } = form.formState
+    const sectionErrors = {
+        basic: !!(errors.name || errors.financial_year || errors.board_type || errors.eligibility_status || errors.website),
+        financials: !!(errors.turnover || errors.profit || errors.borrowed_funds || errors.loan_interest),
+        directors: !!(errors.directors),
+        contact: !!(errors.official_mail || errors.calling_status || errors.whatsapp_status),
+        notes: !!(errors.response || errors.remarks),
+    }
+
     return (
         <div className="h-full flex flex-col bg-background border-l border-border shadow-xl animate-in slide-in-from-right-10 duration-300 ease-in-out">
             {/* Header */}
@@ -312,6 +323,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                             title="Basic Information"
                             expanded={expandedSections.basic}
                             onToggle={() => toggleSection("basic")}
+                            hasError={sectionErrors.basic}
                         >
                             <div className="space-y-3 px-4 pb-3">
                                 <FormField
@@ -465,6 +477,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                             title="Financials"
                             expanded={expandedSections.financials}
                             onToggle={() => toggleSection("financials")}
+                            hasError={sectionErrors.financials}
                         >
                             <div className="grid grid-cols-2 gap-3 px-4 pb-3">
                                 <FormField
@@ -536,6 +549,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                             title={`Directors${directors.length > 0 ? ` (${directors.length})` : ""}`}
                             expanded={expandedSections.directors}
                             onToggle={() => toggleSection("directors")}
+                            hasError={sectionErrors.directors}
                             action={
                                 directors.length < 3 && expandedSections.directors && (
                                     <button
@@ -644,6 +658,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                             title="Contact & Status"
                             expanded={expandedSections.contact}
                             onToggle={() => toggleSection("contact")}
+                            hasError={sectionErrors.contact}
                         >
                             <div className="space-y-3 px-4 pb-3">
                                 <FormField
@@ -734,6 +749,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                             title="Notes"
                             expanded={expandedSections.notes}
                             onToggle={() => toggleSection("notes")}
+                            hasError={sectionErrors.notes}
                         >
                             <div className="px-4 pb-3">
                                 <FormField
@@ -799,19 +815,24 @@ function CollapsibleSection({
     onToggle,
     children,
     action,
+    hasError,
 }: {
     title: string
     expanded: boolean
     onToggle: () => void
     children: React.ReactNode
     action?: React.ReactNode
+    hasError?: boolean
 }) {
     return (
         <div className="border-b border-border/40 last:border-b-0">
             <button
                 type="button"
                 onClick={onToggle}
-                className="w-full flex items-center justify-between px-6 py-3 hover:bg-muted/50 transition-colors"
+                className={cn(
+                    "w-full flex items-center justify-between px-6 py-3 hover:bg-muted/50 transition-colors",
+                    hasError && !expanded && "bg-red-50/50"
+                )}
             >
                 <div className="flex items-center gap-2">
                     {expanded ? (
@@ -820,6 +841,11 @@ function CollapsibleSection({
                         <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                     )}
                     <span className="text-sm font-medium text-foreground">{title}</span>
+                    {hasError && !expanded && (
+                        <span className="flex items-center gap-1 text-[10px] text-red-600 bg-red-100 px-1.5 py-0.5 rounded font-medium">
+                            Has errors
+                        </span>
+                    )}
                 </div>
                 {action}
             </button>
