@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useCallback } from "react"
+import useSWR from "swr"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@clerk/nextjs"
 import { useProfile } from "@/components/auth-provider"
-import { Loader2, Building2, MapPin, ChevronDown } from "lucide-react"
+import { Loader2, Building2, MapPin } from "lucide-react"
 import { CompanyDataTable } from "@/features/companies/company-data-table"
 import { EditCompanyPanel } from "@/features/companies/edit-company-panel"
 import type { Company } from "@/features/companies/company-data-table"
@@ -26,56 +27,57 @@ interface City {
 
 // Admin view - shows all pending eligibility companies
 export function PendingAssignments() {
-    const [cities, setCities] = useState<City[]>([])
     const [selectedCity, setSelectedCity] = useState<string>("all")
-    const [loading, setLoading] = useState(true)
     const [editingCompany, setEditingCompany] = useState<Company | null>(null)
     const [refreshKey, setRefreshKey] = useState(0)
     const { getToken } = useAuth()
-    const { isAdmin, profile } = useProfile()
+    const { profile } = useProfile()
 
-    useEffect(() => {
-        async function fetchCities() {
-            const token = await getToken({ template: "supabase", skipCache: true })
-            const supabase = createClient(token)
+    const fetchCities = useCallback(async () => {
+        const token = await getToken({ template: "supabase", skipCache: true })
+        const supabase = createClient(token)
 
-            // Get cities with pending companies count
-            const { data: companyData } = await supabase
-                .from("companies")
-                .select("city_id")
-                .eq("eligibility_status", "pending")
+        // Get cities with pending companies count
+        const { data: companyData } = await supabase
+            .from("companies")
+            .select("city_id")
+            .eq("eligibility_status", "pending")
 
-            if (companyData && companyData.length > 0) {
-                // Count companies per city
-                const cityCounts = companyData.reduce<Record<string, number>>((acc, c) => {
-                    acc[c.city_id] = (acc[c.city_id] || 0) + 1
-                    return acc
-                }, {})
+        if (companyData && companyData.length > 0) {
+            // Count companies per city
+            const cityCounts = companyData.reduce<Record<string, number>>((acc, c) => {
+                acc[c.city_id] = (acc[c.city_id] || 0) + 1
+                return acc
+            }, {})
 
-                const cityIds = Object.keys(cityCounts)
+            const cityIds = Object.keys(cityCounts)
 
-                const { data: cityData } = await supabase
-                    .from("cities")
-                    .select("id, name, short_code")
-                    .in("id", cityIds)
-                    .order("name")
+            const { data: cityData } = await supabase
+                .from("cities")
+                .select("id, name, short_code")
+                .in("id", cityIds)
+                .order("name")
 
-                if (cityData) {
-                    setCities(cityData.map(c => ({
-                        ...c,
-                        count: cityCounts[c.id] || 0
-                    })))
-                }
+            if (cityData) {
+                return cityData.map(c => ({
+                    ...c,
+                    count: cityCounts[c.id] || 0
+                }))
             }
-            setLoading(false)
         }
+        return []
+    }, [getToken])
 
-        if (profile) {
-            fetchCities()
+    const { data: cities = [], isLoading, mutate } = useSWR(
+        profile ? ['pending-cities', refreshKey] : null,
+        fetchCities,
+        {
+            revalidateOnFocus: false,
+            dedupingInterval: 30000,
         }
-    }, [getToken, profile, refreshKey])
+    )
 
-    if (loading) {
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center h-[50vh]">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -153,105 +155,112 @@ export function PendingAssignments() {
 
 // Telemarketer view with tabs for Pending and Completed
 export function TelemarketerAssignments() {
-    const [pendingCities, setPendingCities] = useState<City[]>([])
-    const [completedCities, setCompletedCities] = useState<City[]>([])
     const [selectedPendingCity, setSelectedPendingCity] = useState<string>("all")
     const [selectedCompletedCity, setSelectedCompletedCity] = useState<string>("all")
-    const [loading, setLoading] = useState(true)
     const [editingCompany, setEditingCompany] = useState<Company | null>(null)
     const [refreshKey, setRefreshKey] = useState(0)
-    const [supabaseProfileId, setSupabaseProfileId] = useState<string | null>(null)
     const { getToken } = useAuth()
     const { profile } = useProfile()
 
-    useEffect(() => {
-        async function fetchData() {
-            const token = await getToken({ template: "supabase", skipCache: true })
-            const supabase = createClient(token)
+    const fetchAssignmentData = useCallback(async () => {
+        const token = await getToken({ template: "supabase", skipCache: true })
+        const supabase = createClient(token)
 
-            if (!profile?.id) return
+        if (!profile?.id) return null
 
-            // Get Supabase profile ID
-            const { data: profileData } = await supabase
-                .from("profiles")
-                .select("id")
-                .eq("clerk_id", profile.id)
-                .single()
+        // Get Supabase profile ID
+        const { data: profileData } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("clerk_id", profile.id)
+            .single()
 
-            if (!profileData) {
-                setLoading(false)
-                return
-            }
-
-            setSupabaseProfileId(profileData.id)
-
-            // Get pending companies with city counts
-            const { data: pendingCompanies } = await supabase
-                .from("companies")
-                .select("city_id")
-                .eq("assigned_to", profileData.id)
-                .eq("eligibility_status", "pending")
-
-            if (pendingCompanies && pendingCompanies.length > 0) {
-                const cityCounts = pendingCompanies.reduce<Record<string, number>>((acc, c) => {
-                    acc[c.city_id] = (acc[c.city_id] || 0) + 1
-                    return acc
-                }, {})
-
-                const cityIds = Object.keys(cityCounts)
-
-                const { data: cityData } = await supabase
-                    .from("cities")
-                    .select("id, name, short_code")
-                    .in("id", cityIds)
-                    .order("name")
-
-                if (cityData) {
-                    setPendingCities(cityData.map(c => ({
-                        ...c,
-                        count: cityCounts[c.id] || 0
-                    })))
-                }
-            }
-
-            // Get completed companies with city counts (terminal states)
-            const { data: completedCompanies } = await supabase
-                .from("companies")
-                .select("city_id")
-                .eq("assigned_to", profileData.id)
-                .in("calling_status", ["interested", "not_interested", "not_contactable"])
-
-            if (completedCompanies && completedCompanies.length > 0) {
-                const cityCounts = completedCompanies.reduce<Record<string, number>>((acc, c) => {
-                    acc[c.city_id] = (acc[c.city_id] || 0) + 1
-                    return acc
-                }, {})
-
-                const cityIds = Object.keys(cityCounts)
-
-                const { data: cityData } = await supabase
-                    .from("cities")
-                    .select("id, name, short_code")
-                    .in("id", cityIds)
-                    .order("name")
-
-                if (cityData) {
-                    setCompletedCities(cityData.map(c => ({
-                        ...c,
-                        count: cityCounts[c.id] || 0
-                    })))
-                }
-            }
-
-            setLoading(false)
+        if (!profileData) {
+            return null
         }
 
-        if (profile) {
-            fetchData()
-        }
-    }, [getToken, profile, refreshKey])
+        let pendingCities: City[] = []
+        let completedCities: City[] = []
 
-    if (loading) {
+        // Get pending companies with city counts
+        const { data: pendingCompanies } = await supabase
+            .from("companies")
+            .select("city_id")
+            .eq("assigned_to", profileData.id)
+            .eq("eligibility_status", "pending")
+
+        if (pendingCompanies && pendingCompanies.length > 0) {
+            const cityCounts = pendingCompanies.reduce<Record<string, number>>((acc, c) => {
+                acc[c.city_id] = (acc[c.city_id] || 0) + 1
+                return acc
+            }, {})
+
+            const cityIds = Object.keys(cityCounts)
+
+            const { data: cityData } = await supabase
+                .from("cities")
+                .select("id, name, short_code")
+                .in("id", cityIds)
+                .order("name")
+
+            if (cityData) {
+                pendingCities = cityData.map(c => ({
+                    ...c,
+                    count: cityCounts[c.id] || 0
+                }))
+            }
+        }
+
+        // Get completed companies with city counts (terminal states)
+        const { data: completedCompanies } = await supabase
+            .from("companies")
+            .select("city_id")
+            .eq("assigned_to", profileData.id)
+            .in("calling_status", ["interested", "not_interested", "not_contactable"])
+
+        if (completedCompanies && completedCompanies.length > 0) {
+            const cityCounts = completedCompanies.reduce<Record<string, number>>((acc, c) => {
+                acc[c.city_id] = (acc[c.city_id] || 0) + 1
+                return acc
+            }, {})
+
+            const cityIds = Object.keys(cityCounts)
+
+            const { data: cityData } = await supabase
+                .from("cities")
+                .select("id, name, short_code")
+                .in("id", cityIds)
+                .order("name")
+
+            if (cityData) {
+                completedCities = cityData.map(c => ({
+                    ...c,
+                    count: cityCounts[c.id] || 0
+                }))
+            }
+        }
+
+        return {
+            supabaseProfileId: profileData.id,
+            pendingCities,
+            completedCities
+        }
+    }, [getToken, profile?.id])
+
+    const { data, isLoading, mutate } = useSWR(
+        profile ? ['telemarketer-assignments', refreshKey] : null,
+        fetchAssignmentData,
+        {
+            revalidateOnFocus: false,
+            dedupingInterval: 30000,
+        }
+    )
+
+    const supabaseProfileId = data?.supabaseProfileId || null
+    const pendingCities = data?.pendingCities || []
+    const completedCities = data?.completedCities || []
+
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center h-[50vh]">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />

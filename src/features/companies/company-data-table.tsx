@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback, useRef, useLayoutEffect } from "react"
+import { useState, useMemo, useCallback, useRef, useLayoutEffect } from "react"
+import useSWR from "swr"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@clerk/nextjs"
 import {
@@ -156,8 +157,6 @@ const TruncatedTooltipCell = ({ value, className }: { value: string | null | und
 }
 
 export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callingStatusIn, onAddCompany, refreshKey, onEditCompany, hideAssignColumn, hideAddButton, showCityColumn }: CompanyDataTableProps) {
-    const [companies, setCompanies] = useState<Company[]>([])
-    const [loading, setLoading] = useState(true)
     const [sorting, setSorting] = useState<SortingState>([])
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -168,7 +167,6 @@ export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callin
         return visibility
     })
     const [globalFilter, setGlobalFilter] = useState("")
-    const [totalCount, setTotalCount] = useState(0)
     const [pageSize, setPageSize] = useState(50)
     const [internalRefreshKey, setInternalRefreshKey] = useState(0)
 
@@ -177,6 +175,112 @@ export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callin
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
     const { getToken } = useAuth()
+
+    // Define type for SWR data
+    type CompaniesData = { companies: Company[]; totalCount: number }
+
+    // Fetch companies using SWR
+    const fetchCompanies = useCallback(async (): Promise<CompaniesData> => {
+        const token = await getToken({ template: "supabase", skipCache: true })
+        const supabase = createClient(token)
+
+        let query = supabase
+            .from("companies")
+            .select(`
+                id,
+                internal_id,
+                city_id,
+                city:cities(id, name, short_code),
+                name,
+                financial_year,
+                turnover,
+                profit,
+                borrowed_funds,
+                loan_interest,
+                eligibility_status,
+                board_type,
+                official_mail,
+                calling_status,
+                response,
+                whatsapp_status,
+                remarks,
+                website,
+                assigned_to,
+                assigned_profile:profiles!assigned_to(id, full_name, email, image_url),
+                directors(id, din_no, name, contact_no, email, email_status, remark)
+            `, { count: "exact" })
+
+        // Apply filters based on provided props
+        if (cityId) {
+            query = query.eq("city_id", cityId)
+        }
+        if (assignedTo) {
+            query = query.eq("assigned_to", assignedTo)
+        }
+        if (eligibilityStatus) {
+            query = query.eq("eligibility_status", eligibilityStatus)
+        }
+        if (callingStatusIn && callingStatusIn.length > 0) {
+            query = query.in("calling_status", callingStatusIn)
+        }
+
+        const { data, error, count } = await query.order("created_at", { ascending: false })
+
+        if (error) {
+            console.error("Error fetching companies:", error)
+            throw error
+        }
+
+        // Transform data to handle Supabase returning relations as arrays
+        const transformed: Company[] = (data || []).map(company => ({
+            ...company,
+            city: Array.isArray(company.city)
+                ? company.city[0] || null
+                : company.city || null,
+            assigned_profile: Array.isArray(company.assigned_profile)
+                ? company.assigned_profile[0] || null
+                : company.assigned_profile || null
+        })) as Company[]
+
+        return { companies: transformed, totalCount: count || 0 }
+    }, [cityId, assignedTo, eligibilityStatus, callingStatusIn, getToken])
+
+    // SWR key based on filters
+    const swrKey = cityId || assignedTo || eligibilityStatus || callingStatusIn || showCityColumn
+        ? ['companies', cityId, assignedTo, eligibilityStatus, callingStatusIn?.join(','), refreshKey, internalRefreshKey]
+        : null
+
+    const { data, isLoading, mutate } = useSWR<CompaniesData>(
+        swrKey,
+        fetchCompanies,
+        {
+            revalidateOnFocus: false,
+            dedupingInterval: 30000,
+        }
+    )
+
+    const companies: Company[] = data?.companies || []
+    const totalCount = data?.totalCount || 0
+
+    // Optimistic update helper - updates companies locally via SWR
+    const updateCompanyField = useCallback((companyId: string, field: keyof Company, value: unknown) => {
+        if (!data) return
+        const updatedCompanies = data.companies.map(c =>
+            c.id === companyId ? { ...c, [field]: value } : c
+        )
+        mutate({ ...data, companies: updatedCompanies as typeof data.companies }, { revalidate: false })
+    }, [mutate, data])
+
+    // Update assigned profile optimistically
+    const updateAssignedProfile = useCallback((companyId: string, profile: AssignedProfile | null) => {
+        if (!data) return
+        const updatedCompanies = data.companies.map(c =>
+            c.id === companyId
+                ? { ...c, assigned_to: profile?.id || null, assigned_profile: profile }
+                : c
+        )
+        mutate({ ...data, companies: updatedCompanies as typeof data.companies }, { revalidate: false })
+    }, [mutate, data])
 
     // Column definitions - Notion-style with semantic colors
     const columns = useMemo<ColumnDef<Company>[]>(() => [
@@ -458,13 +562,7 @@ export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callin
                 <QuickAssignSelect
                     companyId={row.original.id}
                     currentAssignment={row.original.assigned_profile || null}
-                    onOptimisticUpdate={(profile) => {
-                        setCompanies(prev => prev.map(c =>
-                            c.id === row.original.id
-                                ? { ...c, assigned_to: profile?.id || null, assigned_profile: profile }
-                                : c
-                        ))
-                    }}
+                    onOptimisticUpdate={(profile) => updateAssignedProfile(row.original.id, profile)}
                 />
             ),
             filterFn: (row, id, value) => {
@@ -540,93 +638,7 @@ export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callin
             },
             size: 80,
         },
-    ], [])
-
-
-
-    // Fetch companies function (can be called silently)
-    const fetchCompanies = useCallback(async (silent = false) => {
-        if (!silent) setLoading(true)
-        const token = await getToken({ template: "supabase", skipCache: true })
-        const supabase = createClient(token)
-
-        let query = supabase
-            .from("companies")
-            .select(`
-                id,
-                internal_id,
-                city_id,
-                city:cities(id, name, short_code),
-                name,
-                financial_year,
-                turnover,
-                profit,
-                borrowed_funds,
-                loan_interest,
-                eligibility_status,
-                board_type,
-                official_mail,
-                calling_status,
-                response,
-                whatsapp_status,
-                remarks,
-                website,
-                assigned_to,
-                assigned_profile:profiles!assigned_to(id, full_name, email, image_url),
-                directors(id, din_no, name, contact_no, email, email_status, remark)
-            `, { count: "exact" })
-
-        // Apply filters based on provided props
-        if (cityId) {
-            query = query.eq("city_id", cityId)
-        }
-        if (assignedTo) {
-            query = query.eq("assigned_to", assignedTo)
-        }
-        if (eligibilityStatus) {
-            query = query.eq("eligibility_status", eligibilityStatus)
-        }
-        if (callingStatusIn && callingStatusIn.length > 0) {
-            query = query.in("calling_status", callingStatusIn)
-        }
-
-        const { data, error, count } = await query.order("created_at", { ascending: false })
-
-        if (error) {
-            console.error("Error fetching companies:", error)
-        } else {
-            // Transform data to handle Supabase returning relations as arrays
-            const transformed = (data || []).map(company => ({
-                ...company,
-                city: Array.isArray(company.city)
-                    ? company.city[0] || null
-                    : company.city || null,
-                assigned_profile: Array.isArray(company.assigned_profile)
-                    ? company.assigned_profile[0] || null
-                    : company.assigned_profile || null
-            }))
-            setCompanies(transformed)
-            setTotalCount(count || 0)
-        }
-        if (!silent) setLoading(false)
-    }, [cityId, assignedTo, eligibilityStatus, callingStatusIn, getToken])
-
-    // Initial fetch and refresh on key change
-    useEffect(() => {
-        if (cityId || assignedTo || eligibilityStatus || callingStatusIn || showCityColumn) fetchCompanies(false)
-    }, [cityId, assignedTo, eligibilityStatus, callingStatusIn, showCityColumn, refreshKey])
-
-    // Silent refresh when internalRefreshKey changes (after edits)
-    useEffect(() => {
-        if (internalRefreshKey > 0 && (cityId || assignedTo || eligibilityStatus || callingStatusIn || showCityColumn)) fetchCompanies(true)
-    }, [internalRefreshKey])
-
-    // Optimistic update helper - updates a single company field locally
-    const updateCompanyField = useCallback((companyId: string, field: keyof Company, value: unknown) => {
-        setCompanies(prev => prev.map(c =>
-            c.id === companyId ? { ...c, [field]: value } : c
-        ))
-    }, [])
+    ], [updateCompanyField, updateAssignedProfile])
 
     // Table instance
     const table = useReactTable({
@@ -684,7 +696,7 @@ export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callin
     }, [onEditCompany])
 
 
-    if (loading) {
+    if (isLoading) {
         return (
             <div className="space-y-0">
                 {/* Skeleton header */}

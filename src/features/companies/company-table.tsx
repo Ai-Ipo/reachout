@@ -1,5 +1,6 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useCallback } from "react"
+import useSWR from "swr"
 import { createClient } from "@/lib/supabase/client"
 import {
     Table,
@@ -31,24 +32,20 @@ interface CompanyTableProps {
 }
 
 export function CompanyTable({ initialCityId, statusFilter }: CompanyTableProps) {
-    const [companies, setCompanies] = useState<Company[]>([])
-    const [loading, setLoading] = useState(true)
     const [page, setPage] = useState(0)
     const pageSize = 10
     const { getToken } = useAuth()
 
-    useEffect(() => {
-        async function fetchCompanies() {
-            setLoading(true)
-            const token = await getToken({ template: "supabase", skipCache: true })
-            const supabase = createClient(token)
+    const fetchCompanies = useCallback(async () => {
+        const token = await getToken({ template: "supabase", skipCache: true })
+        const supabase = createClient(token)
 
-            const from = page * pageSize
-            const to = from + pageSize - 1
+        const from = page * pageSize
+        const to = from + pageSize - 1
 
-            let query = supabase
-                .from("companies")
-                .select(`
+        let query = supabase
+            .from("companies")
+            .select(`
             id,
             internal_id,
             name,
@@ -58,30 +55,41 @@ export function CompanyTable({ initialCityId, statusFilter }: CompanyTableProps)
             city:cities(name),
             assigned_to_profile:profiles(full_name)
         `, { count: 'exact' })
-                .range(from, to)
-                .order("created_at", { ascending: false })
+            .range(from, to)
+            .order("created_at", { ascending: false })
 
-            if (initialCityId) {
-                query = query.eq("city_id", initialCityId)
-            }
-
-            if (statusFilter === 'unassigned') {
-                query = query.is("assigned_to", null)
-            }
-
-            const { data, error } = await query
-
-            if (error) {
-                console.error("Error fetching companies:", error)
-            } else {
-                // @ts-ignore - Supabase types join inference can be tricky
-                setCompanies(data || [])
-            }
-            setLoading(false)
+        if (initialCityId) {
+            query = query.eq("city_id", initialCityId)
         }
 
-        fetchCompanies()
+        if (statusFilter === 'unassigned') {
+            query = query.is("assigned_to", null)
+        }
+
+        const { data, error } = await query
+
+        if (error) {
+            console.error("Error fetching companies:", error)
+            throw error
+        }
+        // Transform Supabase arrays to single objects
+        return (data || []).map(company => ({
+            ...company,
+            city: Array.isArray(company.city) ? company.city[0] || null : company.city,
+            assigned_to_profile: Array.isArray(company.assigned_to_profile)
+                ? company.assigned_to_profile[0] || null
+                : company.assigned_to_profile
+        })) as Company[]
     }, [getToken, page, initialCityId, statusFilter])
+
+    const { data: companies = [], isLoading } = useSWR<Company[]>(
+        ['company-table', initialCityId, statusFilter, page],
+        fetchCompanies,
+        {
+            revalidateOnFocus: false,
+            dedupingInterval: 30000,
+        }
+    )
 
     const nextValid = companies.length === pageSize
 
@@ -109,7 +117,7 @@ export function CompanyTable({ initialCityId, statusFilter }: CompanyTableProps)
                 </div>
             </div>
 
-            {loading ? (
+            {isLoading ? (
                 <div className="space-y-2">
                     <Skeleton className="w-full h-12" />
                     <Skeleton className="w-full h-12" />

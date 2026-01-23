@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useState, useCallback } from "react"
+import useSWR from "swr"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
 import { createClient } from "@/lib/supabase/client"
@@ -21,19 +22,22 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useSidebar } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 
+interface CityData {
+    city: { id: string; name: string; short_code: string } | null
+    companyCount: number
+}
+
 export default function CityDetailPage() {
     const params = useParams()
     const { setOpen } = useSidebar()
     const cityId = params?.id as string
-    const [city, setCity] = useState<any>(null)
-    const [companyCount, setCompanyCount] = useState<number>(0)
     const [addDialogOpen, setAddDialogOpen] = useState(false)
     const [editingCompany, setEditingCompany] = useState<Company | null>(null)
     const [refreshKey, setRefreshKey] = useState(0)
     const router = useRouter()
     const { getToken } = useAuth()
 
-    const fetchCity = useCallback(async () => {
+    const fetchCity = useCallback(async (): Promise<CityData> => {
         const token = await getToken({ template: "supabase", skipCache: true })
         const supabase = createClient(token)
 
@@ -43,22 +47,26 @@ export default function CityDetailPage() {
             .eq("id", cityId)
             .single()
 
-        if (data) {
-            setCity(data)
-        }
-
         // Fetch company count
         const { count } = await supabase
             .from("companies")
             .select("*", { count: "exact", head: true })
             .eq("city_id", cityId)
 
-        setCompanyCount(count || 0)
+        return { city: data, companyCount: count || 0 }
     }, [cityId, getToken])
 
-    useEffect(() => {
-        if (cityId) fetchCity()
-    }, [cityId, fetchCity, refreshKey])
+    const { data, isLoading, mutate } = useSWR<CityData>(
+        cityId ? ['city-detail', cityId, refreshKey] : null,
+        fetchCity,
+        {
+            revalidateOnFocus: false,
+            dedupingInterval: 30000,
+        }
+    )
+
+    const city = data?.city
+    const companyCount = data?.companyCount || 0
 
 
     async function handleDelete() {
@@ -77,10 +85,10 @@ export default function CityDetailPage() {
 
     function handleCompanyAdded() {
         setRefreshKey(k => k + 1)
-        fetchCity() // Update count
+        mutate() // Update count
     }
 
-    if (!city) return (
+    if (isLoading || !city) return (
         <div className="flex-1 space-y-6 p-8 pt-6">
             {/* Header Skeleton */}
             <div className="flex items-center justify-between">

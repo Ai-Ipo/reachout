@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import useSWR from "swr"
 import { getTeamStats, type TelemarketerStats } from "@/app/actions/get-team-stats"
 import { TelemarketerCard } from "./telemarketer-card"
 import { TelemarketerDetailSheet } from "./telemarketer-detail-sheet"
 import { Loader2, Users, HelpCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 import {
     Popover,
     PopoverContent,
@@ -14,20 +14,16 @@ import {
 } from "@/components/ui/popover"
 
 export function TeamGrid() {
-    const [telemarketers, setTelemarketers] = useState<TelemarketerStats[]>([])
-    const [loading, setLoading] = useState(true)
+    const { data: telemarketers = [], isLoading, mutate } = useSWR(
+        'team-stats',
+        getTeamStats,
+        {
+            revalidateOnFocus: false,
+            dedupingInterval: 30000,
+        }
+    )
     const [selectedTelemarketer, setSelectedTelemarketer] = useState<TelemarketerStats | null>(null)
     const [sheetOpen, setSheetOpen] = useState(false)
-
-    useEffect(() => {
-        async function fetchTeam() {
-            setLoading(true)
-            const data = await getTeamStats()
-            setTelemarketers(data)
-            setLoading(false)
-        }
-        fetchTeam()
-    }, [])
 
     const handleViewAssignments = (telemarketer: TelemarketerStats) => {
         setSelectedTelemarketer(telemarketer)
@@ -37,10 +33,10 @@ export function TeamGrid() {
     const handleSheetClose = () => {
         setSheetOpen(false)
         // Refresh stats when sheet closes (in case assignments changed)
-        getTeamStats().then(setTelemarketers)
+        mutate()
     }
 
-    if (loading) {
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center h-[50vh]">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
