@@ -4,95 +4,76 @@ import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@clerk/nextjs"
 import { useProfile } from "@/components/auth-provider"
+import { Loader2, Building2, MapPin, ChevronDown } from "lucide-react"
+import { CompanyDataTable } from "@/features/companies/company-data-table"
+import { EditCompanyPanel } from "@/features/companies/edit-company-panel"
+import type { Company } from "@/features/companies/company-data-table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Loader2, Phone, Building2 } from "lucide-react"
-import Link from "next/link"
-import { StatusBadge, getCallingStatusVariant } from "@/components/ui/status-badge"
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 
-interface PendingCompany {
-    id: string
-    internal_id: string
-    name: string
-    city_id: string
-    city: { id: string; name: string; short_code: string }[] | null
-    calling_status: string
-    eligibility_status: string
-    assigned_to: string | null
-}
-
-interface CityInfo {
+interface City {
     id: string
     name: string
     short_code: string
+    count?: number
 }
 
-interface GroupedCompanies {
-    city: CityInfo
-    companies: PendingCompany[]
-}
-
+// Admin view - shows all pending eligibility companies
 export function PendingAssignments() {
-    const [companies, setCompanies] = useState<PendingCompany[]>([])
+    const [cities, setCities] = useState<City[]>([])
+    const [selectedCity, setSelectedCity] = useState<string>("all")
     const [loading, setLoading] = useState(true)
+    const [editingCompany, setEditingCompany] = useState<Company | null>(null)
+    const [refreshKey, setRefreshKey] = useState(0)
     const { getToken } = useAuth()
     const { isAdmin, profile } = useProfile()
 
     useEffect(() => {
-        async function fetchPendingCompanies() {
+        async function fetchCities() {
             const token = await getToken({ template: "supabase", skipCache: true })
             const supabase = createClient(token)
 
-            let query = supabase
+            // Get cities with pending companies count
+            const { data: companyData } = await supabase
                 .from("companies")
-                .select(`
-                    id,
-                    internal_id,
-                    name,
-                    city_id,
-                    calling_status,
-                    eligibility_status,
-                    assigned_to,
-                    city:cities(id, name, short_code)
-                `)
+                .select("city_id")
                 .eq("eligibility_status", "pending")
-                .order("created_at", { ascending: false })
 
-            // Telemarketers only see their assigned companies
-            if (!isAdmin && profile?.id) {
-                // Get the Supabase profile ID from clerk_id
-                const { data: profileData } = await supabase
-                    .from("profiles")
-                    .select("id")
-                    .eq("clerk_id", profile.id)
-                    .single()
+            if (companyData && companyData.length > 0) {
+                // Count companies per city
+                const cityCounts = companyData.reduce<Record<string, number>>((acc, c) => {
+                    acc[c.city_id] = (acc[c.city_id] || 0) + 1
+                    return acc
+                }, {})
 
-                if (profileData) {
-                    query = query.eq("assigned_to", profileData.id)
+                const cityIds = Object.keys(cityCounts)
+
+                const { data: cityData } = await supabase
+                    .from("cities")
+                    .select("id, name, short_code")
+                    .in("id", cityIds)
+                    .order("name")
+
+                if (cityData) {
+                    setCities(cityData.map(c => ({
+                        ...c,
+                        count: cityCounts[c.id] || 0
+                    })))
                 }
-            }
-
-            const { data, error } = await query
-
-            if (error) {
-                console.error("Error fetching pending companies:", error)
-            } else {
-                setCompanies((data as PendingCompany[]) || [])
             }
             setLoading(false)
         }
 
         if (profile) {
-            fetchPendingCompanies()
+            fetchCities()
         }
-    }, [getToken, isAdmin, profile])
+    }, [getToken, profile, refreshKey])
 
     if (loading) {
         return (
@@ -102,7 +83,9 @@ export function PendingAssignments() {
         )
     }
 
-    if (companies.length === 0) {
+    const totalCount = cities.reduce((sum, c) => sum + (c.count || 0), 0)
+
+    if (totalCount === 0) {
         return (
             <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
                 <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
@@ -111,106 +94,293 @@ export function PendingAssignments() {
                 <div className="text-center">
                     <h3 className="font-medium">No pending companies</h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                        {isAdmin
-                            ? "All companies have been reviewed for eligibility"
-                            : "You have no pending assignments"}
+                        All companies have been reviewed for eligibility
                     </p>
                 </div>
             </div>
         )
     }
 
-    // For admins, group by city
-    if (isAdmin) {
-        const grouped = companies.reduce<GroupedCompanies[]>((acc, company) => {
-            // Supabase returns related data as array - get first element
-            const cityInfo = Array.isArray(company.city) ? company.city[0] : company.city
-            if (!cityInfo) return acc
+    return (
+        <>
+            {/* City Selector */}
+            <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4" />
+                    <span>City:</span>
+                </div>
+                <Select value={selectedCity} onValueChange={setSelectedCity}>
+                    <SelectTrigger className="w-[200px]">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">
+                            All Cities ({totalCount})
+                        </SelectItem>
+                        {cities.map(city => (
+                            <SelectItem key={city.id} value={city.id}>
+                                {city.name} ({city.count})
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
 
-            const existing = acc.find(g => g.city.id === cityInfo.id)
-            if (existing) {
-                existing.companies.push(company)
-            } else {
-                acc.push({
-                    city: cityInfo,
-                    companies: [company]
-                })
+            {/* Company Table */}
+            <CompanyDataTable
+                cityId={selectedCity === "all" ? undefined : selectedCity}
+                eligibilityStatus="pending"
+                onEditCompany={setEditingCompany}
+                hideAddButton
+                showCityColumn={selectedCity === "all"}
+                refreshKey={refreshKey}
+            />
+
+            {/* Edit Company Panel */}
+            {editingCompany && (
+                <EditCompanyPanel
+                    company={editingCompany}
+                    onClose={() => setEditingCompany(null)}
+                    onSuccess={() => {
+                        setEditingCompany(null)
+                        setRefreshKey(prev => prev + 1)
+                    }}
+                />
+            )}
+        </>
+    )
+}
+
+// Telemarketer view with tabs for Pending and Completed
+export function TelemarketerAssignments() {
+    const [pendingCities, setPendingCities] = useState<City[]>([])
+    const [completedCities, setCompletedCities] = useState<City[]>([])
+    const [selectedPendingCity, setSelectedPendingCity] = useState<string>("all")
+    const [selectedCompletedCity, setSelectedCompletedCity] = useState<string>("all")
+    const [loading, setLoading] = useState(true)
+    const [editingCompany, setEditingCompany] = useState<Company | null>(null)
+    const [refreshKey, setRefreshKey] = useState(0)
+    const [supabaseProfileId, setSupabaseProfileId] = useState<string | null>(null)
+    const { getToken } = useAuth()
+    const { profile } = useProfile()
+
+    useEffect(() => {
+        async function fetchData() {
+            const token = await getToken({ template: "supabase", skipCache: true })
+            const supabase = createClient(token)
+
+            if (!profile?.id) return
+
+            // Get Supabase profile ID
+            const { data: profileData } = await supabase
+                .from("profiles")
+                .select("id")
+                .eq("clerk_id", profile.id)
+                .single()
+
+            if (!profileData) {
+                setLoading(false)
+                return
             }
-            return acc
-        }, [])
 
-        // Sort by city name
-        grouped.sort((a, b) => a.city.name.localeCompare(b.city.name))
+            setSupabaseProfileId(profileData.id)
 
+            // Get pending companies with city counts
+            const { data: pendingCompanies } = await supabase
+                .from("companies")
+                .select("city_id")
+                .eq("assigned_to", profileData.id)
+                .eq("eligibility_status", "pending")
+
+            if (pendingCompanies && pendingCompanies.length > 0) {
+                const cityCounts = pendingCompanies.reduce<Record<string, number>>((acc, c) => {
+                    acc[c.city_id] = (acc[c.city_id] || 0) + 1
+                    return acc
+                }, {})
+
+                const cityIds = Object.keys(cityCounts)
+
+                const { data: cityData } = await supabase
+                    .from("cities")
+                    .select("id, name, short_code")
+                    .in("id", cityIds)
+                    .order("name")
+
+                if (cityData) {
+                    setPendingCities(cityData.map(c => ({
+                        ...c,
+                        count: cityCounts[c.id] || 0
+                    })))
+                }
+            }
+
+            // Get completed companies with city counts
+            const { data: completedCompanies } = await supabase
+                .from("companies")
+                .select("city_id")
+                .eq("assigned_to", profileData.id)
+                .in("calling_status", ["interested", "not_interested"])
+
+            if (completedCompanies && completedCompanies.length > 0) {
+                const cityCounts = completedCompanies.reduce<Record<string, number>>((acc, c) => {
+                    acc[c.city_id] = (acc[c.city_id] || 0) + 1
+                    return acc
+                }, {})
+
+                const cityIds = Object.keys(cityCounts)
+
+                const { data: cityData } = await supabase
+                    .from("cities")
+                    .select("id, name, short_code")
+                    .in("id", cityIds)
+                    .order("name")
+
+                if (cityData) {
+                    setCompletedCities(cityData.map(c => ({
+                        ...c,
+                        count: cityCounts[c.id] || 0
+                    })))
+                }
+            }
+
+            setLoading(false)
+        }
+
+        if (profile) {
+            fetchData()
+        }
+    }, [getToken, profile, refreshKey])
+
+    if (loading) {
         return (
-            <div className="space-y-8">
-                {grouped.map(group => (
-                    <div key={group.city.id}>
-                        <div className="flex items-center gap-2 mb-3">
-                            <h2 className="text-sm font-semibold text-foreground">
-                                {group.city.name}
-                            </h2>
-                            <span className="text-xs text-muted-foreground">
-                                ({group.companies.length})
-                            </span>
-                        </div>
-                        <CompanyTable companies={group.companies} isAdmin={isAdmin} />
-                    </div>
-                ))}
+            <div className="flex items-center justify-center h-[50vh]">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
         )
     }
 
-    // For telemarketers, show flat list
-    return <CompanyTable companies={companies} isAdmin={isAdmin} />
-}
+    const pendingTotal = pendingCities.reduce((sum, c) => sum + (c.count || 0), 0)
+    const completedTotal = completedCities.reduce((sum, c) => sum + (c.count || 0), 0)
 
-function CompanyTable({ companies, isAdmin }: { companies: PendingCompany[], isAdmin: boolean }) {
-    return (
-        <div className="border border-border rounded-md overflow-hidden">
-            <Table>
-                <TableHeader>
-                    <TableRow className="bg-muted/30">
-                        <TableHead className="text-xs font-medium">ID</TableHead>
-                        <TableHead className="text-xs font-medium">Company</TableHead>
-                        {!isAdmin && <TableHead className="text-xs font-medium">City</TableHead>}
-                        <TableHead className="text-xs font-medium">Call Status</TableHead>
-                        <TableHead className="text-xs font-medium w-[100px]">Action</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {companies.map(company => (
-                        <TableRow key={company.id} className="hover:bg-muted/30">
-                            <TableCell className="font-mono text-xs text-muted-foreground">
-                                {company.internal_id}
-                            </TableCell>
-                            <TableCell className="font-medium text-sm">
-                                {company.name}
-                            </TableCell>
-                            {!isAdmin && (
-                                <TableCell className="text-sm text-muted-foreground">
-                                    {company.city?.[0]?.name}
-                                </TableCell>
-                            )}
-                            <TableCell>
-                                <StatusBadge
-                                    variant={getCallingStatusVariant(company.calling_status)}
-                                >
-                                    {company.calling_status?.replace(/_/g, " ") || "queued"}
-                                </StatusBadge>
-                            </TableCell>
-                            <TableCell>
-                                <Button asChild size="sm" variant="outline" className="h-7 text-xs">
-                                    <Link href={isAdmin ? `/admin/companies/${company.id}` : `/telemarketer/companies/${company.id}`}>
-                                        <Phone className="w-3 h-3 mr-1.5" />
-                                        Call
-                                    </Link>
-                                </Button>
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+    const EmptyState = ({ message }: { message: string }) => (
+        <div className="flex flex-col items-center justify-center h-[30vh] space-y-4">
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <div className="text-center">
+                <p className="text-sm text-muted-foreground">{message}</p>
+            </div>
         </div>
+    )
+
+    const CitySelector = ({
+        cities,
+        selectedCity,
+        onSelect,
+        totalCount
+    }: {
+        cities: City[]
+        selectedCity: string
+        onSelect: (value: string) => void
+        totalCount: number
+    }) => (
+        <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPin className="w-4 h-4" />
+                <span>City:</span>
+            </div>
+            <Select value={selectedCity} onValueChange={onSelect}>
+                <SelectTrigger className="w-[200px]">
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">
+                        All Cities ({totalCount})
+                    </SelectItem>
+                    {cities.map(city => (
+                        <SelectItem key={city.id} value={city.id}>
+                            {city.name} ({city.count})
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+    )
+
+    return (
+        <>
+            <Tabs defaultValue="pending" className="w-full">
+                <TabsList>
+                    <TabsTrigger value="pending">
+                        Pending {pendingTotal > 0 && `(${pendingTotal})`}
+                    </TabsTrigger>
+                    <TabsTrigger value="completed">
+                        Completed {completedTotal > 0 && `(${completedTotal})`}
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="pending" className="mt-4">
+                    {pendingTotal === 0 ? (
+                        <EmptyState message="No pending assignments" />
+                    ) : (
+                        <>
+                            <CitySelector
+                                cities={pendingCities}
+                                selectedCity={selectedPendingCity}
+                                onSelect={setSelectedPendingCity}
+                                totalCount={pendingTotal}
+                            />
+                            <CompanyDataTable
+                                cityId={selectedPendingCity === "all" ? undefined : selectedPendingCity}
+                                assignedTo={supabaseProfileId || undefined}
+                                eligibilityStatus="pending"
+                                onEditCompany={setEditingCompany}
+                                hideAssignColumn
+                                hideAddButton
+                                showCityColumn={selectedPendingCity === "all"}
+                                refreshKey={refreshKey}
+                            />
+                        </>
+                    )}
+                </TabsContent>
+
+                <TabsContent value="completed" className="mt-4">
+                    {completedTotal === 0 ? (
+                        <EmptyState message="No completed work yet" />
+                    ) : (
+                        <>
+                            <CitySelector
+                                cities={completedCities}
+                                selectedCity={selectedCompletedCity}
+                                onSelect={setSelectedCompletedCity}
+                                totalCount={completedTotal}
+                            />
+                            <CompanyDataTable
+                                cityId={selectedCompletedCity === "all" ? undefined : selectedCompletedCity}
+                                assignedTo={supabaseProfileId || undefined}
+                                callingStatusIn={["interested", "not_interested"]}
+                                onEditCompany={setEditingCompany}
+                                hideAssignColumn
+                                hideAddButton
+                                showCityColumn={selectedCompletedCity === "all"}
+                                refreshKey={refreshKey}
+                            />
+                        </>
+                    )}
+                </TabsContent>
+            </Tabs>
+
+            {/* Edit Company Panel */}
+            {editingCompany && (
+                <EditCompanyPanel
+                    company={editingCompany}
+                    onClose={() => setEditingCompany(null)}
+                    onSuccess={() => {
+                        setEditingCompany(null)
+                        setRefreshKey(prev => prev + 1)
+                    }}
+                />
+            )}
+        </>
     )
 }

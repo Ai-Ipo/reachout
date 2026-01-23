@@ -69,6 +69,10 @@ export function TelemarketerCard({ telemarketer, onViewAssignments }: Telemarket
                 {/* Progress bar */}
                 {stats.total > 0 && (
                     <div className="mb-4">
+                        <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                            <span>Completion</span>
+                            <span>{Math.round((completed / stats.total) * 100)}%</span>
+                        </div>
                         <div className="h-1.5 bg-muted rounded-full overflow-hidden flex">
                             {stats.interested > 0 && (
                                 <div

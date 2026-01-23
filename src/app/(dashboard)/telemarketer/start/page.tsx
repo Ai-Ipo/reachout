@@ -1,6 +1,6 @@
 "use client"
 
-import { PendingAssignments } from "@/features/telemarketer/pending-assignments"
+import { PendingAssignments, TelemarketerAssignments } from "@/features/telemarketer/pending-assignments"
 import { useProfile } from "@/components/auth-provider"
 
 export default function TelemarketerStartPage() {
@@ -21,7 +21,7 @@ export default function TelemarketerStartPage() {
                 </div>
             </div>
 
-            <PendingAssignments />
+            {isAdmin ? <PendingAssignments /> : <TelemarketerAssignments />}
         </div>
     )
 }

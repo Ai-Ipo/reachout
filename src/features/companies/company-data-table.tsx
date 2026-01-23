@@ -40,7 +40,7 @@ import { QuickWhatsappSelect } from "./quick-whatsapp-select"
 import { QuickBoardSelect } from "./quick-board-select"
 import { QuickAssignSelect } from "./quick-assign-select"
 import { formatCurrency, formatPercent, formatFinancialYear } from "@/lib/format"
-import { ArrowUpDown, Plus, Type, Hash, Building2, Users, Mail, Phone, Settings2, ExternalLink } from "lucide-react"
+import { ArrowUpDown, Plus, Type, Hash, Building2, Users, Mail, Phone, Settings2, ExternalLink, MapPin } from "lucide-react"
 import { BulkActionBar, BulkAssignDialog, BulkDeleteDialog } from "./bulk-actions"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -63,10 +63,17 @@ export interface AssignedProfile {
     image_url: string | null
 }
 
+export interface CityInfo {
+    id: string
+    name: string
+    short_code: string
+}
+
 export interface Company {
     id: string
     internal_id: string
     city_id: string
+    city?: CityInfo | null
     name: string
     financial_year?: string
     turnover?: number
@@ -89,10 +96,14 @@ export interface Company {
 interface CompanyDataTableProps {
     cityId?: string
     assignedTo?: string // Filter by telemarketer profile ID
+    eligibilityStatus?: "pending" | "eligible" | "ineligible" // Filter by eligibility
+    callingStatusIn?: string[] // Filter by calling_status IN these values
     onAddCompany?: () => void
     refreshKey?: number
     onEditCompany?: (company: Company | null) => void
     hideAssignColumn?: boolean // Hide the assign column when viewing a specific telemarketer
+    hideAddButton?: boolean // Hide the add button in footer
+    showCityColumn?: boolean // Show city column (for "All Cities" view)
 }
 
 const TruncatedTooltipCell = ({ value, className }: { value: string | null | undefined, className?: string }) => {
@@ -144,15 +155,18 @@ const TruncatedTooltipCell = ({ value, className }: { value: string | null | und
     )
 }
 
-export function CompanyDataTable({ cityId, assignedTo, onAddCompany, refreshKey, onEditCompany, hideAssignColumn }: CompanyDataTableProps) {
+export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callingStatusIn, onAddCompany, refreshKey, onEditCompany, hideAssignColumn, hideAddButton, showCityColumn }: CompanyDataTableProps) {
     const [companies, setCompanies] = useState<Company[]>([])
     const [loading, setLoading] = useState(true)
     const [sorting, setSorting] = useState<SortingState>([])
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
-        hideAssignColumn ? { assigned_to: false } : {}
-    )
+    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+        const visibility: VisibilityState = {}
+        if (hideAssignColumn) visibility.assigned_to = false
+        if (!showCityColumn) visibility.city = false
+        return visibility
+    })
     const [globalFilter, setGlobalFilter] = useState("")
     const [totalCount, setTotalCount] = useState(0)
     const [pageSize, setPageSize] = useState(50)
@@ -246,6 +260,26 @@ export function CompanyDataTable({ cityId, assignedTo, onAddCompany, refreshKey,
             size: 200,
             minSize: 100,
             enableHiding: false,
+        },
+        {
+            id: "city",
+            accessorFn: (row) => row.city?.name,
+            header: ({ column }) => (
+                <button
+                    className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                >
+                    <MapPin className="h-3 w-3 text-muted-foreground" />
+                    <span>City</span>
+                    <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />
+                </button>
+            ),
+            cell: ({ row }) => (
+                <span className="text-muted-foreground text-xs">
+                    {row.original.city?.name || "-"}
+                </span>
+            ),
+            size: 100,
         },
         {
             accessorKey: "financial_year",
@@ -522,6 +556,7 @@ export function CompanyDataTable({ cityId, assignedTo, onAddCompany, refreshKey,
                 id,
                 internal_id,
                 city_id,
+                city:cities(id, name, short_code),
                 name,
                 financial_year,
                 turnover,
@@ -541,11 +576,18 @@ export function CompanyDataTable({ cityId, assignedTo, onAddCompany, refreshKey,
                 directors(id, din_no, name, contact_no, email, email_status, remark)
             `, { count: "exact" })
 
-        // Apply filter based on provided props
+        // Apply filters based on provided props
+        if (cityId) {
+            query = query.eq("city_id", cityId)
+        }
         if (assignedTo) {
             query = query.eq("assigned_to", assignedTo)
-        } else if (cityId) {
-            query = query.eq("city_id", cityId)
+        }
+        if (eligibilityStatus) {
+            query = query.eq("eligibility_status", eligibilityStatus)
+        }
+        if (callingStatusIn && callingStatusIn.length > 0) {
+            query = query.in("calling_status", callingStatusIn)
         }
 
         const { data, error, count } = await query.order("created_at", { ascending: false })
@@ -553,9 +595,12 @@ export function CompanyDataTable({ cityId, assignedTo, onAddCompany, refreshKey,
         if (error) {
             console.error("Error fetching companies:", error)
         } else {
-            // Transform data to handle Supabase returning profile as array
+            // Transform data to handle Supabase returning relations as arrays
             const transformed = (data || []).map(company => ({
                 ...company,
+                city: Array.isArray(company.city)
+                    ? company.city[0] || null
+                    : company.city || null,
                 assigned_profile: Array.isArray(company.assigned_profile)
                     ? company.assigned_profile[0] || null
                     : company.assigned_profile || null
@@ -564,16 +609,16 @@ export function CompanyDataTable({ cityId, assignedTo, onAddCompany, refreshKey,
             setTotalCount(count || 0)
         }
         if (!silent) setLoading(false)
-    }, [cityId, assignedTo, getToken])
+    }, [cityId, assignedTo, eligibilityStatus, callingStatusIn, getToken])
 
     // Initial fetch and refresh on key change
     useEffect(() => {
-        if (cityId || assignedTo) fetchCompanies(false)
-    }, [cityId, assignedTo, refreshKey])
+        if (cityId || assignedTo || eligibilityStatus || callingStatusIn || showCityColumn) fetchCompanies(false)
+    }, [cityId, assignedTo, eligibilityStatus, callingStatusIn, showCityColumn, refreshKey])
 
     // Silent refresh when internalRefreshKey changes (after edits)
     useEffect(() => {
-        if (internalRefreshKey > 0 && (cityId || assignedTo)) fetchCompanies(true)
+        if (internalRefreshKey > 0 && (cityId || assignedTo || eligibilityStatus || callingStatusIn || showCityColumn)) fetchCompanies(true)
     }, [internalRefreshKey])
 
     // Optimistic update helper - updates a single company field locally
@@ -747,26 +792,28 @@ export function CompanyDataTable({ cityId, assignedTo, onAddCompany, refreshKey,
                     </div>
 
                     {/* Notion-like Footer */}
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground pl-1 mt-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={onAddCompany}
-                            className="h-8 rounded hover:bg-muted text-muted-foreground font-normal px-2"
-                        >
-                            <Plus className="w-4 h-4 mr-1.5" />
-                            New
-                        </Button>
-                        <div className="flex items-center gap-2 border-l border-border pl-3 ml-1">
-                            <input
-                                type="number"
-                                className="w-12 h-7 border border-border rounded px-1.5 text-xs bg-background focus:outline-none focus:border-primary text-center"
-                                placeholder="10"
-                                defaultValue={10}
-                            />
-                            <span className="text-muted-foreground/60 text-xs text-nowrap">more rows at the bottom</span>
+                    {!hideAddButton && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground pl-1 mt-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={onAddCompany}
+                                className="h-8 rounded hover:bg-muted text-muted-foreground font-normal px-2"
+                            >
+                                <Plus className="w-4 h-4 mr-1.5" />
+                                New
+                            </Button>
+                            <div className="flex items-center gap-2 border-l border-border pl-3 ml-1">
+                                <input
+                                    type="number"
+                                    className="w-12 h-7 border border-border rounded px-1.5 text-xs bg-background focus:outline-none focus:border-primary text-center"
+                                    placeholder="10"
+                                    defaultValue={10}
+                                />
+                                <span className="text-muted-foreground/60 text-xs text-nowrap">more rows at the bottom</span>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
             <BulkActionBar
