@@ -494,7 +494,7 @@ export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callin
                 return (
                     <QuickStatusSelect
                         companyId={row.original.id}
-                        currentStatus={status as "queued" | "picked_up" | "not_answered" | "not_contactable" | "interested" | "not_interested"}
+                        currentStatus={status as "queued" | "callback" | "not_answered" | "not_contactable" | "interested" | "not_interested"}
                         onOptimisticUpdate={(newStatus) => updateCompanyField(row.original.id, "calling_status", newStatus)}
                     />
                 )

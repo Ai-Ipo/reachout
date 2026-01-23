@@ -118,7 +118,7 @@ export function CompanyDetailView({ company }: CompanyDetailProps) {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="queued">Queued</SelectItem>
-                                    <SelectItem value="picked_up">Picked Up</SelectItem>
+                                    <SelectItem value="callback">Callback</SelectItem>
                                     <SelectItem value="not_answered">Not Answered</SelectItem>
                                     <SelectItem value="not_contactable">Not Contactable</SelectItem>
                                     <SelectItem value="interested">Interested</SelectItem>

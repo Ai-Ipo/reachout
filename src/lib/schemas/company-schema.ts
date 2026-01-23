@@ -3,7 +3,7 @@ import { z } from "zod"
 // Enums matching database types
 export const callingStatusEnum = z.enum([
     "queued",
-    "picked_up",
+    "callback",
     "not_answered",
     "not_contactable",
     "interested",
@@ -99,7 +99,7 @@ export type CompanyFormData = z.infer<typeof companyFormSchema>
 // Display labels for enums
 export const callingStatusLabels: Record<CallingStatus, string> = {
     queued: "Queued",
-    picked_up: "Picked Up",
+    callback: "Callback",
     not_answered: "Not Answered",
     not_contactable: "Not Contactable",
     interested: "Interested",

@@ -21,8 +21,11 @@ export function TelemarketerCard({ telemarketer, onViewAssignments }: Telemarket
     const displayName = full_name || email?.split("@")[0] || "Unknown"
 
     // Calculate completion rate
-    const completed = stats.interested + stats.not_interested
-    const inProgress = stats.picked_up + stats.not_answered + stats.not_contactable
+    // Completed = terminal states (interested, not_interested, not_contactable)
+    const completed = stats.interested + stats.not_interested + stats.not_contactable
+    // In Progress = callback, not_answered (needs follow-up)
+    const inProgress = stats.callback + stats.not_answered
+    // Pending = not started
     const pending = stats.queued
 
     return (
@@ -64,6 +67,10 @@ export function TelemarketerCard({ telemarketer, onViewAssignments }: Telemarket
                         <span className="text-muted-foreground">Not Interested</span>
                         <span className="font-medium text-muted-foreground">{stats.not_interested}</span>
                     </div>
+                    <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Not Contactable</span>
+                        <span className="font-medium text-muted-foreground">{stats.not_contactable}</span>
+                    </div>
                 </div>
 
                 {/* Progress bar */}
@@ -84,6 +91,12 @@ export function TelemarketerCard({ telemarketer, onViewAssignments }: Telemarket
                                 <div
                                     className="bg-gray-400 h-full"
                                     style={{ width: `${(stats.not_interested / stats.total) * 100}%` }}
+                                />
+                            )}
+                            {stats.not_contactable > 0 && (
+                                <div
+                                    className="bg-red-400 h-full"
+                                    style={{ width: `${(stats.not_contactable / stats.total) * 100}%` }}
                                 />
                             )}
                             {inProgress > 0 && (

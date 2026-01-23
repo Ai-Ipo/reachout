@@ -10,7 +10,7 @@ const statusBadgeVariants = cva(
       variant: {
         // Calling statuses
         queued: "bg-gray-50 text-gray-600 ring-gray-500/10",
-        picked_up: "bg-blue-50 text-blue-700 ring-blue-700/10",
+        callback: "bg-blue-50 text-blue-700 ring-blue-700/10",
         not_answered: "bg-yellow-50 text-yellow-800 ring-yellow-600/20",
         not_contactable: "bg-red-50 text-red-700 ring-red-600/10",
         interested: "bg-green-50 text-green-700 ring-green-600/20",
@@ -73,7 +73,7 @@ function StatusBadge({ className, variant, size, children, ...props }: StatusBad
 export function getCallingStatusVariant(status: string): StatusBadgeProps["variant"] {
   const mapping: Record<string, StatusBadgeProps["variant"]> = {
     queued: "queued",
-    picked_up: "picked_up",
+    callback: "callback",
     not_answered: "not_answered",
     not_contactable: "not_contactable",
     interested: "interested",

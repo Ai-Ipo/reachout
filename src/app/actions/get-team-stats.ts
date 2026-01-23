@@ -12,7 +12,7 @@ export interface TelemarketerStats {
     stats: {
         total: number
         queued: number
-        picked_up: number
+        callback: number
         not_answered: number
         not_contactable: number
         interested: number
@@ -65,7 +65,7 @@ export async function getTeamStats(): Promise<TelemarketerStats[]> {
             statsMap.set(id, {
                 total: 0,
                 queued: 0,
-                picked_up: 0,
+                callback: 0,
                 not_answered: 0,
                 not_contactable: 0,
                 interested: 0,
@@ -99,7 +99,7 @@ export async function getTeamStats(): Promise<TelemarketerStats[]> {
                 stats: statsMap.get(profileMap.get(user.id)!) || {
                     total: 0,
                     queued: 0,
-                    picked_up: 0,
+                    callback: 0,
                     not_answered: 0,
                     not_contactable: 0,
                     interested: 0,

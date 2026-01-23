@@ -214,12 +214,12 @@ export function TelemarketerAssignments() {
                 }
             }
 
-            // Get completed companies with city counts
+            // Get completed companies with city counts (terminal states)
             const { data: completedCompanies } = await supabase
                 .from("companies")
                 .select("city_id")
                 .eq("assigned_to", profileData.id)
-                .in("calling_status", ["interested", "not_interested"])
+                .in("calling_status", ["interested", "not_interested", "not_contactable"])
 
             if (completedCompanies && completedCompanies.length > 0) {
                 const cityCounts = completedCompanies.reduce<Record<string, number>>((acc, c) => {
@@ -358,7 +358,7 @@ export function TelemarketerAssignments() {
                             <CompanyDataTable
                                 cityId={selectedCompletedCity === "all" ? undefined : selectedCompletedCity}
                                 assignedTo={supabaseProfileId || undefined}
-                                callingStatusIn={["interested", "not_interested"]}
+                                callingStatusIn={["interested", "not_interested", "not_contactable"]}
                                 onEditCompany={setEditingCompany}
                                 hideAssignColumn
                                 hideAddButton
