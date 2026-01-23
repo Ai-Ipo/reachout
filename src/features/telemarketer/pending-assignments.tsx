@@ -7,7 +7,6 @@ import { useAuth } from "@clerk/nextjs"
 import { useProfile } from "@/components/auth-provider"
 import { Loader2, Building2, MapPin } from "lucide-react"
 import { CompanyDataTable } from "@/features/companies/company-data-table"
-import { EditCompanyPanel } from "@/features/companies/edit-company-panel"
 import type { Company } from "@/features/companies/company-data-table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -25,11 +24,14 @@ interface City {
     count?: number
 }
 
+interface PendingAssignmentsProps {
+    onEditCompany: (company: Company | null) => void
+    refreshKey: number
+}
+
 // Admin view - shows all pending eligibility companies
-export function PendingAssignments() {
+export function PendingAssignments({ onEditCompany, refreshKey }: PendingAssignmentsProps) {
     const [selectedCity, setSelectedCity] = useState<string>("all")
-    const [editingCompany, setEditingCompany] = useState<Company | null>(null)
-    const [refreshKey, setRefreshKey] = useState(0)
     const { getToken } = useAuth()
     const { profile } = useProfile()
 
@@ -68,7 +70,7 @@ export function PendingAssignments() {
         return []
     }, [getToken])
 
-    const { data: cities = [], isLoading, mutate } = useSWR(
+    const { data: cities = [], isLoading } = useSWR(
         profile ? ['pending-cities', refreshKey] : null,
         fetchCities,
         {
@@ -132,33 +134,24 @@ export function PendingAssignments() {
             <CompanyDataTable
                 cityId={selectedCity === "all" ? undefined : selectedCity}
                 eligibilityStatus="pending"
-                onEditCompany={setEditingCompany}
+                onEditCompany={onEditCompany}
                 hideAddButton
                 showCityColumn={selectedCity === "all"}
                 refreshKey={refreshKey}
             />
-
-            {/* Edit Company Panel */}
-            {editingCompany && (
-                <EditCompanyPanel
-                    company={editingCompany}
-                    onClose={() => setEditingCompany(null)}
-                    onSuccess={() => {
-                        setEditingCompany(null)
-                        setRefreshKey(prev => prev + 1)
-                    }}
-                />
-            )}
         </>
     )
 }
 
+interface TelemarketerAssignmentsProps {
+    onEditCompany: (company: Company | null) => void
+    refreshKey: number
+}
+
 // Telemarketer view with tabs for Pending and Completed
-export function TelemarketerAssignments() {
+export function TelemarketerAssignments({ onEditCompany, refreshKey }: TelemarketerAssignmentsProps) {
     const [selectedPendingCity, setSelectedPendingCity] = useState<string>("all")
     const [selectedCompletedCity, setSelectedCompletedCity] = useState<string>("all")
-    const [editingCompany, setEditingCompany] = useState<Company | null>(null)
-    const [refreshKey, setRefreshKey] = useState(0)
     const { getToken } = useAuth()
     const { profile } = useProfile()
 
@@ -247,7 +240,7 @@ export function TelemarketerAssignments() {
         }
     }, [getToken, profile?.id])
 
-    const { data, isLoading, mutate } = useSWR(
+    const { data, isLoading } = useSWR(
         profile ? ['telemarketer-assignments', refreshKey] : null,
         fetchAssignmentData,
         {
@@ -317,79 +310,65 @@ export function TelemarketerAssignments() {
     )
 
     return (
-        <>
-            <Tabs defaultValue="pending" className="w-full">
-                <TabsList>
-                    <TabsTrigger value="pending">
-                        Pending {pendingTotal > 0 && `(${pendingTotal})`}
-                    </TabsTrigger>
-                    <TabsTrigger value="completed">
-                        Completed {completedTotal > 0 && `(${completedTotal})`}
-                    </TabsTrigger>
-                </TabsList>
+        <Tabs defaultValue="pending" className="w-full">
+            <TabsList>
+                <TabsTrigger value="pending">
+                    Pending {pendingTotal > 0 && `(${pendingTotal})`}
+                </TabsTrigger>
+                <TabsTrigger value="completed">
+                    Completed {completedTotal > 0 && `(${completedTotal})`}
+                </TabsTrigger>
+            </TabsList>
 
-                <TabsContent value="pending" className="mt-4">
-                    {pendingTotal === 0 ? (
-                        <EmptyState message="No pending assignments" />
-                    ) : (
-                        <>
-                            <CitySelector
-                                cities={pendingCities}
-                                selectedCity={selectedPendingCity}
-                                onSelect={setSelectedPendingCity}
-                                totalCount={pendingTotal}
-                            />
-                            <CompanyDataTable
-                                cityId={selectedPendingCity === "all" ? undefined : selectedPendingCity}
-                                assignedTo={supabaseProfileId || undefined}
-                                eligibilityStatus="pending"
-                                onEditCompany={setEditingCompany}
-                                hideAssignColumn
-                                hideAddButton
-                                showCityColumn={selectedPendingCity === "all"}
-                                refreshKey={refreshKey}
-                            />
-                        </>
-                    )}
-                </TabsContent>
+            <TabsContent value="pending" className="mt-4">
+                {pendingTotal === 0 ? (
+                    <EmptyState message="No pending assignments" />
+                ) : (
+                    <>
+                        <CitySelector
+                            cities={pendingCities}
+                            selectedCity={selectedPendingCity}
+                            onSelect={setSelectedPendingCity}
+                            totalCount={pendingTotal}
+                        />
+                        <CompanyDataTable
+                            cityId={selectedPendingCity === "all" ? undefined : selectedPendingCity}
+                            assignedTo={supabaseProfileId || undefined}
+                            eligibilityStatus="pending"
+                            onEditCompany={onEditCompany}
+                            hideAssignColumn
+                            hideAddButton
+                            showCityColumn={selectedPendingCity === "all"}
+                            refreshKey={refreshKey}
+                        />
+                    </>
+                )}
+            </TabsContent>
 
-                <TabsContent value="completed" className="mt-4">
-                    {completedTotal === 0 ? (
-                        <EmptyState message="No completed work yet" />
-                    ) : (
-                        <>
-                            <CitySelector
-                                cities={completedCities}
-                                selectedCity={selectedCompletedCity}
-                                onSelect={setSelectedCompletedCity}
-                                totalCount={completedTotal}
-                            />
-                            <CompanyDataTable
-                                cityId={selectedCompletedCity === "all" ? undefined : selectedCompletedCity}
-                                assignedTo={supabaseProfileId || undefined}
-                                callingStatusIn={["interested", "not_interested", "not_contactable"]}
-                                onEditCompany={setEditingCompany}
-                                hideAssignColumn
-                                hideAddButton
-                                showCityColumn={selectedCompletedCity === "all"}
-                                refreshKey={refreshKey}
-                            />
-                        </>
-                    )}
-                </TabsContent>
-            </Tabs>
-
-            {/* Edit Company Panel */}
-            {editingCompany && (
-                <EditCompanyPanel
-                    company={editingCompany}
-                    onClose={() => setEditingCompany(null)}
-                    onSuccess={() => {
-                        setEditingCompany(null)
-                        setRefreshKey(prev => prev + 1)
-                    }}
-                />
-            )}
-        </>
+            <TabsContent value="completed" className="mt-4">
+                {completedTotal === 0 ? (
+                    <EmptyState message="No completed work yet" />
+                ) : (
+                    <>
+                        <CitySelector
+                            cities={completedCities}
+                            selectedCity={selectedCompletedCity}
+                            onSelect={setSelectedCompletedCity}
+                            totalCount={completedTotal}
+                        />
+                        <CompanyDataTable
+                            cityId={selectedCompletedCity === "all" ? undefined : selectedCompletedCity}
+                            assignedTo={supabaseProfileId || undefined}
+                            callingStatusIn={["interested", "not_interested", "not_contactable"]}
+                            onEditCompany={onEditCompany}
+                            hideAssignColumn
+                            hideAddButton
+                            showCityColumn={selectedCompletedCity === "all"}
+                            refreshKey={refreshKey}
+                        />
+                    </>
+                )}
+            </TabsContent>
+        </Tabs>
     )
 }

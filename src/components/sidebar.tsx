@@ -67,7 +67,7 @@ export function SidebarComponent({ className }: SidebarProps) {
     }
 
     return (
-        <Sidebar className={cn("w-48 max-h-[calc(100vh-2rem)] min-h-[calc(100vh-2rem)] border-none", className)}>
+        <Sidebar className={cn("w-48 max-h-[calc(100vh)] min-h-[calc(100vh)] border-none", className)}>
             <SidebarHeader className="p-6">
                 {/* Header content if needed */}
                 <div className="flex items-center justify-between">
