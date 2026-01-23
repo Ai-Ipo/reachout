@@ -115,10 +115,10 @@ export function CsvUpload() {
                 <div className="grid gap-4 py-4">
                     {!result && (
                         <div className="flex items-center justify-center w-full">
-                            <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-700">
+                            <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors">
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                    <FileUp className={`w-8 h-8 mb-4 text-gray-500 ${uploading ? 'animate-bounce' : ''}`} />
-                                    <p className="mb-2 text-sm text-gray-500 dark:text-gray-400"><span className="font-semibold">{uploading ? 'Processing...' : 'Click to upload'}</span></p>
+                                    <FileUp className={`w-8 h-8 mb-4 text-muted-foreground ${uploading ? 'animate-bounce' : ''}`} />
+                                    <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">{uploading ? 'Processing...' : 'Click to upload'}</span></p>
                                 </div>
                                 <Input
                                     id="dropzone-file"

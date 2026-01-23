@@ -59,11 +59,11 @@ export function TelemarketerDetailSheet({ telemarketer, open, onOpenChange }: Te
                             </div>
                             <div className="text-center">
                                 <p className="text-muted-foreground">Interested</p>
-                                <p className="font-semibold text-green-600">{stats.interested}</p>
+                                <p className="font-semibold text-status-success">{stats.interested}</p>
                             </div>
                             <div className="text-center">
                                 <p className="text-muted-foreground">Pending</p>
-                                <p className="font-semibold text-amber-600">{stats.queued}</p>
+                                <p className="font-semibold text-status-warning">{stats.queued}</p>
                             </div>
                         </div>
                     </div>

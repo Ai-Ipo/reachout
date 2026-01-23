@@ -49,9 +49,9 @@ export default function CompanyLoading() {
                     </div>
 
                     {/* Zone B: Action Deck (Fixed Bottom) */}
-                    <div className="border-t bg-blue-50/50 p-0 h-[60px] border-l-4 border-l-primary/20 shrink-0">
+                    <div className="border-t bg-primary/5 p-0 h-[60px] border-l-4 border-l-primary/20 shrink-0">
                         <div className="px-5 py-3 h-full flex items-center">
-                            <Skeleton className="h-5 w-32 bg-blue-200/50" />
+                            <Skeleton className="h-5 w-32 bg-primary/20" />
                         </div>
                     </div>
                 </div>

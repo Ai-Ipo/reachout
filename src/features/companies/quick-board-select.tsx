@@ -72,7 +72,7 @@ export function QuickBoardSelect({ companyId, currentType, onOptimisticUpdate }:
                     onClick={(e) => e.stopPropagation()}
                 >
                     {updating ? (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-gray-100 text-gray-500">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-muted text-muted-foreground">
                             <Loader2 className="w-3 h-3 animate-spin" />
                         </span>
                     ) : currentType ? (
@@ -94,7 +94,7 @@ export function QuickBoardSelect({ companyId, currentType, onOptimisticUpdate }:
                         <StatusBadge variant={getBoardStatusVariant(value as BoardType)} size="sm">
                             {label}
                         </StatusBadge>
-                        {value === currentType && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                        {value === currentType && <Check className="w-3.5 h-3.5 text-primary" />}
                     </DropdownMenuItem>
                 ))}
             </DropdownMenuContent>

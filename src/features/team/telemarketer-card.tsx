@@ -53,15 +53,15 @@ export function TelemarketerCard({ telemarketer, onViewAssignments }: Telemarket
                     </div>
                     <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">Pending</span>
-                        <span className={cn("font-medium", pending > 0 && "text-amber-600")}>{pending}</span>
+                        <span className={cn("font-medium", pending > 0 && "text-status-warning")}>{pending}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">In Progress</span>
-                        <span className={cn("font-medium", inProgress > 0 && "text-blue-600")}>{inProgress}</span>
+                        <span className={cn("font-medium", inProgress > 0 && "text-status-info")}>{inProgress}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">Interested</span>
-                        <span className={cn("font-medium", stats.interested > 0 && "text-green-600")}>{stats.interested}</span>
+                        <span className={cn("font-medium", stats.interested > 0 && "text-status-success")}>{stats.interested}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">Not Interested</span>
@@ -83,25 +83,25 @@ export function TelemarketerCard({ telemarketer, onViewAssignments }: Telemarket
                         <div className="h-1.5 bg-muted rounded-full overflow-hidden flex">
                             {stats.interested > 0 && (
                                 <div
-                                    className="bg-green-500 h-full"
+                                    className="bg-status-success h-full"
                                     style={{ width: `${(stats.interested / stats.total) * 100}%` }}
                                 />
                             )}
                             {stats.not_interested > 0 && (
                                 <div
-                                    className="bg-gray-400 h-full"
+                                    className="bg-muted-foreground h-full"
                                     style={{ width: `${(stats.not_interested / stats.total) * 100}%` }}
                                 />
                             )}
                             {stats.not_contactable > 0 && (
                                 <div
-                                    className="bg-red-400 h-full"
+                                    className="bg-destructive h-full"
                                     style={{ width: `${(stats.not_contactable / stats.total) * 100}%` }}
                                 />
                             )}
                             {inProgress > 0 && (
                                 <div
-                                    className="bg-blue-500 h-full"
+                                    className="bg-status-info h-full"
                                     style={{ width: `${(inProgress / stats.total) * 100}%` }}
                                 />
                             )}

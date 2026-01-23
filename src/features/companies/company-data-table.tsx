@@ -735,12 +735,12 @@ export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callin
                         >
                             <thead>
                                 {table.getHeaderGroups().map((headerGroup) => (
-                                    <tr key={headerGroup.id} className="border-b border-gray-200 bg-gray-50/50">
+                                    <tr key={headerGroup.id} className="border-b border-border bg-muted/50">
                                         {headerGroup.headers.map((header) => (
                                             <th
                                                 key={header.id}
                                                 style={{ width: header.getSize() }}
-                                                className="h-9 px-2 text-left text-[13px] font-normal text-gray-500 border-r border-gray-200 last:border-r-0 select-none relative group"
+                                                className="h-9 px-2 text-left text-[13px] font-normal text-muted-foreground border-r border-border last:border-r-0 select-none relative group"
                                             >
                                                 {header.isPlaceholder
                                                     ? null
@@ -754,7 +754,7 @@ export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callin
                                                         onTouchStart={header.getResizeHandler()}
                                                         className={cn(
                                                             "absolute right-0 top-0 h-full w-1 bg-border/50 cursor-col-resize touch-none select-none opacity-0 group-hover:opacity-100 transition-opacity",
-                                                            header.column.getIsResizing() && "bg-blue-500 opacity-100 w-1.5"
+                                                            header.column.getIsResizing() && "bg-primary opacity-100 w-1.5"
                                                         )}
                                                     />
                                                 )}
@@ -771,15 +771,15 @@ export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callin
                                             data-state={row.getIsSelected() && "selected"}
                                             onClick={(e) => handleRowClick(row.original, e)}
                                             className={cn(
-                                                "group border-b border-gray-100 hover:bg-gray-50/50 transition-colors cursor-pointer",
-                                                "data-[state=selected]:bg-blue-50/50"
+                                                "group border-b border-border/50 hover:bg-muted/50 transition-colors cursor-pointer",
+                                                "data-[state=selected]:bg-primary/10"
                                             )}
                                         >
                                             {row.getVisibleCells().map((cell) => (
                                                 <td
                                                     key={cell.id}
                                                     style={{ width: cell.column.getSize() }}
-                                                    className="h-9 px-2 border-r border-gray-100 last:border-r-0 text-[13px] text-gray-700 data-[state=selected]:border-blue-100 overflow-hidden"
+                                                    className="h-9 px-2 border-r border-border/50 last:border-r-0 text-[13px] text-foreground data-[state=selected]:border-primary/20 overflow-hidden"
                                                 >
                                                     {flexRender(
                                                         cell.column.columnDef.cell,
@@ -793,7 +793,7 @@ export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callin
                                     <tr>
                                         <td
                                             colSpan={columns.length}
-                                            className="h-24 text-center text-gray-400 text-sm"
+                                            className="h-24 text-center text-muted-foreground text-sm"
                                         >
                                             No companies found.
                                         </td>

@@ -235,7 +235,7 @@ export function CompanyPage({ company, backUrl, backLabel = "Back" }: CompanyPag
                                     {company.official_mail && (
                                         <div className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md group transition-colors">
                                             <div className="flex items-center gap-2.5 text-sm">
-                                                <div className="p-1.5 bg-blue-50 text-blue-600 rounded">
+                                                <div className="p-1.5 bg-status-info-muted text-status-info rounded">
                                                     <Mail className="w-3.5 h-3.5" />
                                                 </div>
                                                 <a href={`mailto:${company.official_mail}`} className="text-foreground hover:underline">
@@ -252,7 +252,7 @@ export function CompanyPage({ company, backUrl, backLabel = "Back" }: CompanyPag
                                     )}
                                     {websiteUrl && (
                                         <div className="flex items-center gap-2.5 text-sm p-2 hover:bg-muted/50 rounded-md transition-colors">
-                                            <div className="p-1.5 bg-blue-50 text-blue-600 rounded">
+                                            <div className="p-1.5 bg-status-info-muted text-status-info rounded">
                                                 <Globe className="w-3.5 h-3.5" />
                                             </div>
                                             <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="text-foreground hover:underline flex items-center gap-1">
@@ -273,10 +273,10 @@ export function CompanyPage({ company, backUrl, backLabel = "Back" }: CompanyPag
                     </div>
 
                     {/* Zone B: Action Deck (Fixed Bottom) */}
-                    <div className="border-t bg-blue-50/50 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] z-10 border-l-4 border-l-primary">
+                    <div className="border-t bg-primary/5 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] z-10 border-l-4 border-l-primary">
                         <Accordion type="single" collapsible>
                             <AccordionItem value="call-updates" className="border-b-0">
-                                <AccordionTrigger className="px-5 py-3 hover:no-underline hover:bg-blue-100/50 transition-colors">
+                                <AccordionTrigger className="px-5 py-3 hover:no-underline hover:bg-primary/10 transition-colors">
                                     <div className="flex items-center gap-2">
                                         <span className="font-medium text-sm text-foreground">Call Updates</span>
                                         {saving && <span className="text-xs text-muted-foreground animate-pulse font-normal">Saving...</span>}

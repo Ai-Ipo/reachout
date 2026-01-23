@@ -543,7 +543,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                                     <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); handleAddDirector(); }}
-                                        className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-0.5"
+                                        className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-0.5"
                                     >
                                         <Plus className="w-3 h-3" />
                                         Add
@@ -819,7 +819,7 @@ function CollapsibleSection({
                 onClick={onToggle}
                 className={cn(
                     "w-full flex items-center justify-between px-6 py-3 hover:bg-muted/50 transition-colors",
-                    hasError && !expanded && "bg-red-50/50"
+                    hasError && !expanded && "bg-destructive/5"
                 )}
             >
                 <div className="flex items-center gap-2">
@@ -830,7 +830,7 @@ function CollapsibleSection({
                     )}
                     <span className="text-sm font-medium text-foreground">{title}</span>
                     {hasError && !expanded && (
-                        <span className="flex items-center gap-1 text-[10px] text-red-600 bg-red-100 px-1.5 py-0.5 rounded font-medium">
+                        <span className="flex items-center gap-1 text-[10px] text-destructive bg-destructive/10 px-1.5 py-0.5 rounded font-medium">
                             Has errors
                         </span>
                     )}

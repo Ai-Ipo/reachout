@@ -107,7 +107,7 @@ export function QuickAssignSelect({ companyId, currentAssignment, onOptimisticUp
                     onClick={(e) => e.stopPropagation()}
                 >
                     {updating ? (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-gray-100 text-gray-500">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-muted text-muted-foreground">
                             <Loader2 className="w-3 h-3 animate-spin" />
                         </span>
                     ) : currentAssignment ? (
@@ -169,7 +169,7 @@ export function QuickAssignSelect({ companyId, currentAssignment, onOptimisticUp
                                         </span>
                                     </div>
                                     {profile.id === currentAssignment?.id && (
-                                        <Check className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                                        <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                                     )}
                                 </DropdownMenuItem>
                             ))

@@ -9,38 +9,38 @@ const statusBadgeVariants = cva(
     variants: {
       variant: {
         // Calling statuses
-        queued: "bg-gray-50 text-gray-600 ring-gray-500/10",
-        callback: "bg-blue-50 text-blue-700 ring-blue-700/10",
-        not_answered: "bg-yellow-50 text-yellow-800 ring-yellow-600/20",
-        not_contactable: "bg-red-50 text-red-700 ring-red-600/10",
-        interested: "bg-green-50 text-green-700 ring-green-600/20",
-        not_interested: "bg-red-50 text-red-700 ring-red-600/10",
+        queued: "bg-status-neutral-muted text-status-neutral ring-status-neutral/20",
+        callback: "bg-status-info-muted text-status-info ring-status-info/20",
+        not_answered: "bg-status-warning-muted text-status-warning-foreground ring-status-warning/20",
+        not_contactable: "bg-destructive/10 text-destructive ring-destructive/20",
+        interested: "bg-status-success-muted text-status-success ring-status-success/20",
+        not_interested: "bg-destructive/10 text-destructive ring-destructive/20",
 
         // Eligibility statuses
-        eligible: "bg-green-50 text-green-700 ring-green-600/20",
-        ineligible: "bg-red-50 text-red-700 ring-red-600/10",
-        pending: "bg-gray-50 text-gray-600 ring-gray-500/10",
+        eligible: "bg-status-success-muted text-status-success ring-status-success/20",
+        ineligible: "bg-destructive/10 text-destructive ring-destructive/20",
+        pending: "bg-status-neutral-muted text-status-neutral ring-status-neutral/20",
 
         // Board types
-        board_sme: "bg-purple-50 text-purple-700 ring-purple-700/10",
-        board_main: "bg-indigo-50 text-indigo-700 ring-indigo-700/10",
-        board_other: "bg-gray-100 text-gray-600 ring-gray-500/10",
+        board_sme: "bg-primary/10 text-primary ring-primary/20",
+        board_main: "bg-status-info-muted text-status-info ring-status-info/20",
+        board_other: "bg-muted text-muted-foreground ring-border",
 
         // WhatsApp statuses
-        wa_not_sent: "bg-gray-50 text-gray-600 ring-gray-500/10",
-        wa_sent: "bg-blue-50 text-blue-700 ring-blue-700/10",
-        wa_delivered: "bg-cyan-50 text-cyan-700 ring-cyan-700/10",
-        wa_read: "bg-emerald-50 text-emerald-700 ring-emerald-700/10",
-        wa_replied: "bg-green-50 text-green-700 ring-green-600/20",
-        wa_failed: "bg-red-50 text-red-700 ring-red-600/10",
+        wa_not_sent: "bg-status-neutral-muted text-status-neutral ring-status-neutral/20",
+        wa_sent: "bg-status-info-muted text-status-info ring-status-info/20",
+        wa_delivered: "bg-status-info-muted text-status-info ring-status-info/20",
+        wa_read: "bg-status-success-muted text-status-success ring-status-success/20",
+        wa_replied: "bg-status-success-muted text-status-success ring-status-success/20",
+        wa_failed: "bg-destructive/10 text-destructive ring-destructive/20",
 
         // Generic
-        default: "bg-gray-50 text-gray-600 ring-gray-500/10",
-        success: "bg-green-50 text-green-700 ring-green-600/20",
-        warning: "bg-yellow-50 text-yellow-800 ring-yellow-600/20",
-        info: "bg-blue-50 text-blue-700 ring-blue-700/10",
-        error: "bg-red-50 text-red-700 ring-red-600/10",
-        muted: "bg-gray-100 text-gray-600 ring-gray-500/10",
+        default: "bg-status-neutral-muted text-status-neutral ring-status-neutral/20",
+        success: "bg-status-success-muted text-status-success ring-status-success/20",
+        warning: "bg-status-warning-muted text-status-warning-foreground ring-status-warning/20",
+        info: "bg-status-info-muted text-status-info ring-status-info/20",
+        error: "bg-destructive/10 text-destructive ring-destructive/20",
+        muted: "bg-muted text-muted-foreground ring-border",
       },
       size: {
         sm: "text-[10px] px-1.5 py-0.5",
