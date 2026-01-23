@@ -4,7 +4,14 @@ import { useState, useEffect } from "react"
 import { getTeamStats, type TelemarketerStats } from "@/app/actions/get-team-stats"
 import { TelemarketerCard } from "./telemarketer-card"
 import { TelemarketerDetailSheet } from "./telemarketer-detail-sheet"
-import { Loader2, Users } from "lucide-react"
+import { Loader2, Users, HelpCircle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
 
 export function TeamGrid() {
     const [telemarketers, setTelemarketers] = useState<TelemarketerStats[]>([])
@@ -76,11 +83,11 @@ export function TeamGrid() {
                 </div>
                 <div className="bg-muted/30 rounded-lg p-4">
                     <p className="text-xs text-muted-foreground">Interested</p>
-                    <p className="text-2xl font-semibold mt-1 text-green-600">{totalInterested}</p>
+                    <p className="text-2xl font-semibold mt-1 text-status-success">{totalInterested}</p>
                 </div>
                 <div className="bg-muted/30 rounded-lg p-4">
                     <p className="text-xs text-muted-foreground">Pending</p>
-                    <p className="text-2xl font-semibold mt-1 text-amber-600">{totalPending}</p>
+                    <p className="text-2xl font-semibold mt-1 text-status-warning">{totalPending}</p>
                 </div>
             </div>
 
@@ -104,6 +111,51 @@ export function TeamGrid() {
                     else setSheetOpen(open)
                 }}
             />
+
+            {/* Floating Legend */}
+            <div className="fixed bottom-4 right-4 z-50">
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-10 w-10 rounded-full shadow-lg bg-background hover:bg-muted border-2"
+                        >
+                            <HelpCircle className="w-5 h-5 text-muted-foreground" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-4 mb-2" align="end" side="top">
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h4 className="font-medium text-sm">Status Legend</h4>
+                            </div>
+                            <div className="grid gap-2.5">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-muted" />
+                                    <span className="text-xs text-muted-foreground">Pending (queued)</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-status-info" />
+                                    <span className="text-xs text-muted-foreground">In Progress (callback, etc)</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-status-success" />
+                                    <span className="text-xs text-muted-foreground">Interested</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-status-neutral" />
+                                    <span className="text-xs text-muted-foreground">Not Interested</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-destructive" />
+                                    <span className="text-xs text-muted-foreground">Not Contactable</span>
+                                </div>
+                            </div>
+                        </div>
+                    </PopoverContent>
+                </Popover>
+            </div>
         </>
     )
 }
+
