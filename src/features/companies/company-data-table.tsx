@@ -38,7 +38,8 @@ import { QuickWhatsappSelect } from "./quick-whatsapp-select"
 import { QuickBoardSelect } from "./quick-board-select"
 import { QuickAssignSelect } from "./quick-assign-select"
 import { formatCurrency, formatPercent, formatFinancialYear } from "@/lib/format"
-import { ArrowUpDown, Plus, Type, Hash, Building2, Users, Mail, Phone, Settings2, ExternalLink } from "lucide-react"
+import { ArrowUpDown, Plus, Type, Hash, Building2, Users, Mail, Phone, Settings2, ExternalLink, ListFilter } from "lucide-react"
+import { BulkActionBar, BulkAssignDialog, BulkDeleteDialog } from "./bulk-actions"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -152,6 +153,11 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
     const [eligibilityFilter, setEligibilityFilter] = useState<string[]>([])
     const [assignmentFilter, setAssignmentFilter] = useState<"all" | "assigned" | "unassigned">("all")
     const [internalRefreshKey, setInternalRefreshKey] = useState(0)
+
+    // Bulk Action State
+    const [assignDialogOpen, setAssignDialogOpen] = useState(false)
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
     const { getToken } = useAuth()
 
     // Column definitions - Notion-style with semantic colors
@@ -639,37 +645,33 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
         <div className="flex relative h-full">
             <div className="flex-1 min-w-0">
                 <div className="space-y-0">
-                    {/* Toolbar */}
-                    <div className="flex items-center justify-between py-2">
-                        <div className="flex items-center gap-3">
-                            <h3 className="text-sm font-medium text-foreground">Companies</h3>
-                            <span className="text-xs text-muted-foreground">
-                                {filteredCount !== totalCount ? `${filteredCount} of ` : ""}
-                                {totalCount} total
-                                {selectedCount > 0 && (
-                                    <span className="ml-1 text-primary">({selectedCount} selected)</span>
-                                )}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
+                    {/* Top Toolbar - Clean & Notion-like */}
+                    <div className="flex items-center justify-between py-3">
+                        <div className="flex items-center gap-3 flex-1">
                             <Input
                                 placeholder="Search companies..."
                                 value={globalFilter ?? ""}
                                 onChange={(e) => setGlobalFilter(e.target.value)}
-                                className="h-7 w-[180px] text-xs"
+                                className="h-8 w-[240px] bg-background/50"
                             />
-                            <button
-                                onClick={onAddCompany}
-                                className="inline-flex items-center gap-1.5 px-3 h-7 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                            >
-                                <Plus className="w-3.5 h-3.5" />
-                                Add Company
-                            </button>
+                            {/* Future filters will go here */}
+                            <Button variant="outline" size="sm" className="h-8 border-dashed text-xs font-normal">
+                                <ListFilter className="w-3.5 h-3.5 mr-1.5" />
+                                Filter
+                            </Button>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 mr-2">
+                                <span className="text-xs text-muted-foreground">
+                                    {totalCount} companies
+                                </span>
+                            </div>
+
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" className="h-7 w-7 p-0">
-                                        <Settings2 className="h-3.5 w-3.5" />
-                                        <span className="sr-only">View</span>
+                                    <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                                        <Settings2 className="h-3.5 w-3.5 text-muted-foreground" />
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-[150px]">
@@ -693,6 +695,15 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                                         })}
                                 </DropdownMenuContent>
                             </DropdownMenu>
+
+                            <Button
+                                onClick={onAddCompany}
+                                size="sm"
+                                className="h-8 px-3 text-xs font-medium"
+                            >
+                                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                                New
+                            </Button>
                         </div>
                     </div>
 
@@ -795,6 +806,32 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                     </div>
                 </div>
             </div>
+            <BulkActionBar
+                selectedCount={selectedCount}
+                onClearSelection={() => setRowSelection({})}
+                onAssign={() => setAssignDialogOpen(true)}
+                onDelete={() => setDeleteDialogOpen(true)}
+            />
+
+            <BulkAssignDialog
+                open={assignDialogOpen}
+                onOpenChange={setAssignDialogOpen}
+                selectedIds={table.getFilteredSelectedRowModel().rows.map(row => row.original.id)}
+                onSuccess={() => {
+                    setRowSelection({})
+                    setInternalRefreshKey(k => k + 1)
+                }}
+            />
+
+            <BulkDeleteDialog
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+                selectedIds={table.getFilteredSelectedRowModel().rows.map(row => row.original.id)}
+                onSuccess={() => {
+                    setRowSelection({})
+                    setInternalRefreshKey(k => k + 1)
+                }}
+            />
         </div>
     )
 }

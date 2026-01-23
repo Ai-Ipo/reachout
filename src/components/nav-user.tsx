@@ -1,5 +1,6 @@
 "use client"
 
+import { useProfile } from "./auth-provider"
 import { useUser, useClerk } from "@clerk/nextjs"
 import {
     ChevronsUpDown,
@@ -26,6 +27,7 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui
 export function NavUser() {
     const { user, isLoaded } = useUser()
     const { signOut, openUserProfile } = useClerk()
+    const { isAdmin } = useProfile()
 
     if (!isLoaded) {
         return (
@@ -66,6 +68,11 @@ export function NavUser() {
                             <div className="grid flex-1 text-left text-sm leading-tight">
                                 <span className="truncate font-semibold">{user.fullName}</span>
                                 <span className="truncate text-xs text-muted-foreground">{primaryEmail}</span>
+                                {isAdmin && (
+                                    <span className="mt-0.5 inline-flex w-fit items-center rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
+                                        ADMIN
+                                    </span>
+                                )}
                             </div>
                             <ChevronsUpDown className="ml-auto size-4" />
                         </SidebarMenuButton>

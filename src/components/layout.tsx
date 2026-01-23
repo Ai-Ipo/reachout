@@ -2,6 +2,7 @@
 
 import { SidebarComponent } from "@/components/sidebar"
 import { SidebarProvider } from "@/components/ui/sidebar"
+import { AuthProvider } from "@/components/auth-provider"
 
 interface LayoutProps {
   children: React.ReactNode
@@ -9,19 +10,20 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   return (
-    <SidebarProvider className="scrollbar-hide">
+    <AuthProvider>
+      <SidebarProvider className="scrollbar-hide">
 
-      {/* Sidebar */}
-      <SidebarComponent />
+        {/* Sidebar */}
+        <SidebarComponent />
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col p-3.5 pl-0 bg-sidebar overflow-y-hidden max-h-screen h-screen max-w-screen w-screen scrollbar-hide ">
-        <div className="border border-border bg-background rounded-md overflow-y-auto scrollbar-hide max-h-screen h-screen ">
-          {children}
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col p-3.5 pl-0 bg-sidebar overflow-y-hidden max-h-screen h-screen max-w-screen w-screen scrollbar-hide ">
+          <div className="border border-border bg-background rounded-md overflow-y-auto scrollbar-hide max-h-screen h-screen ">
+            {children}
+          </div>
         </div>
-      </div>
 
-    </SidebarProvider>
-
+      </SidebarProvider>
+    </AuthProvider>
   )
 } 
