@@ -15,7 +15,7 @@ export default async function AdminCompanyPage({ params }: PageProps) {
         .select(`
             *,
             city:cities(id, name, short_code),
-            assigned_profile:profiles!assigned_to(id, full_name, email),
+            assigned_profile:profiles!assigned_to(id, full_name, email, image_url),
             directors(id, din_no, name, contact_no, email, email_status, remark)
         `)
         .eq("id", id)

@@ -11,25 +11,25 @@ import {
     DropdownMenuTrigger,
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import { Check, Loader2, UserCircle, X } from "lucide-react"
-import { cn } from "@/lib/utils"
-
-interface Profile {
-    id: string
-    full_name: string | null
-    email: string | null
-}
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Check, Loader2, X } from "lucide-react"
+import { getTelemarketers, type Telemarketer } from "@/app/actions/get-telemarketers"
 
 interface QuickAssignSelectProps {
     companyId: string
-    currentAssignment: Profile | null
-    onOptimisticUpdate?: (profile: Profile | null) => void
+    currentAssignment: {
+        id: string
+        full_name: string | null
+        email: string | null
+        image_url: string | null
+    } | null
+    onOptimisticUpdate?: (profile: Telemarketer | null) => void
 }
 
 export function QuickAssignSelect({ companyId, currentAssignment, onOptimisticUpdate }: QuickAssignSelectProps) {
     const [updating, setUpdating] = useState(false)
     const [open, setOpen] = useState(false)
-    const [telemarketers, setTelemarketers] = useState<Profile[]>([])
+    const [telemarketers, setTelemarketers] = useState<Telemarketer[]>([])
     const [loadingProfiles, setLoadingProfiles] = useState(false)
     const { getToken } = useAuth()
 
@@ -43,17 +43,8 @@ export function QuickAssignSelect({ companyId, currentAssignment, onOptimisticUp
     async function fetchTelemarketers() {
         setLoadingProfiles(true)
         try {
-            const token = await getToken({ template: "supabase", skipCache: true })
-            const supabase = createClient(token)
-
-            const { data, error } = await supabase
-                .from("profiles")
-                .select("id, full_name, email")
-                .eq("role", "telemarketer")
-                .order("full_name")
-
-            if (error) throw error
-            setTelemarketers(data || [])
+            const data = await getTelemarketers()
+            setTelemarketers(data)
         } catch (error) {
             console.error("Error fetching telemarketers:", error)
         } finally {
@@ -61,13 +52,13 @@ export function QuickAssignSelect({ companyId, currentAssignment, onOptimisticUp
         }
     }
 
-    async function handleAssign(profile: Profile | null) {
+    async function handleAssign(profile: Telemarketer | null) {
         if (profile?.id === currentAssignment?.id) {
             setOpen(false)
             return
         }
 
-        const previousAssignment = currentAssignment
+        const previousAssignment = currentAssignment as Telemarketer | null
 
         // Optimistic update
         onOptimisticUpdate?.(profile)
@@ -98,7 +89,6 @@ export function QuickAssignSelect({ companyId, currentAssignment, onOptimisticUp
         }
     }
 
-    // Get initials for avatar
     function getInitials(name: string | null, email: string | null): string {
         if (name) {
             return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
@@ -121,13 +111,14 @@ export function QuickAssignSelect({ companyId, currentAssignment, onOptimisticUp
                             <Loader2 className="w-3 h-3 animate-spin" />
                         </span>
                     ) : currentAssignment ? (
-                        <div className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 max-w-full">
-                            <div className="w-4 h-4 rounded-full bg-violet-200 flex items-center justify-center flex-shrink-0">
-                                <span className="text-[9px] font-medium text-violet-700">
+                        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-border bg-background hover:bg-muted/50 transition-colors max-w-full shadow-sm">
+                            <Avatar className="w-4 h-4 flex-shrink-0 border border-border/50">
+                                <AvatarImage src={currentAssignment.image_url || undefined} />
+                                <AvatarFallback className="text-[8px] bg-muted text-foreground/70">
                                     {getInitials(currentAssignment.full_name, currentAssignment.email)}
-                                </span>
-                            </div>
-                            <span className="text-[11px] font-medium truncate">
+                                </AvatarFallback>
+                            </Avatar>
+                            <span className="text-[11px] font-medium truncate text-foreground/80">
                                 {currentAssignment.full_name || currentAssignment.email?.split("@")[0] || "Unknown"}
                             </span>
                         </div>
@@ -167,11 +158,12 @@ export function QuickAssignSelect({ companyId, currentAssignment, onOptimisticUp
                                     className="flex items-center justify-between"
                                 >
                                     <div className="flex items-center gap-2 min-w-0">
-                                        <div className="w-5 h-5 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
-                                            <span className="text-[10px] font-medium text-violet-600">
+                                        <Avatar className="w-5 h-5 flex-shrink-0 border border-border/50">
+                                            <AvatarImage src={profile.image_url || undefined} />
+                                            <AvatarFallback className="text-[10px] bg-muted text-foreground/70">
                                                 {getInitials(profile.full_name, profile.email)}
-                                            </span>
-                                        </div>
+                                            </AvatarFallback>
+                                        </Avatar>
                                         <span className="text-sm truncate">
                                             {profile.full_name || profile.email?.split("@")[0] || "Unknown"}
                                         </span>

@@ -33,6 +33,8 @@ import {
     whatsappStatusLabels,
 } from "@/lib/schemas/company-schema"
 import { X, Plus, Trash2, ChevronDown, ChevronRight, Globe, Loader2 } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getTelemarketers, type Telemarketer } from "@/app/actions/get-telemarketers"
 import { cn } from "@/lib/utils"
 
 import {
@@ -92,11 +94,6 @@ function generateFinancialYears(): string[] {
     return years
 }
 
-interface Profile {
-    id: string
-    full_name: string | null
-    email: string | null
-}
 
 export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPanelProps) {
     const [saving, setSaving] = useState(false)
@@ -107,29 +104,18 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
         contact: false,
         notes: false,
     })
-    const [telemarketers, setTelemarketers] = useState<Profile[]>([])
+    const [telemarketers, setTelemarketers] = useState<Telemarketer[]>([])
     const [assignedTo, setAssignedTo] = useState<string | null>(company.assigned_to || null)
     const { getToken } = useAuth()
 
-    // Fetch telemarketers on mount
+    // Fetch telemarketers from Clerk on mount
     useEffect(() => {
         async function fetchTelemarketers() {
-            const token = await getToken({ template: "supabase", skipCache: true })
-            const supabase = createClient(token)
-            const { data, error } = await supabase
-                .from("profiles")
-                .select("id, full_name, email")
-                .eq("role", "telemarketer")
-                .order("full_name")
-            if (error) {
-                console.error("Error fetching telemarketers:", error)
-            } else {
-                console.log("Fetched telemarketers:", data)
-                setTelemarketers(data || [])
-            }
+            const data = await getTelemarketers()
+            setTelemarketers(data)
         }
         fetchTelemarketers()
-    }, [getToken])
+    }, [])
 
     const form = useForm<CompanyFormData>({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -438,18 +424,20 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                                             <SelectItem value="unassigned" className="text-sm text-muted-foreground">
                                                 Unassigned
                                             </SelectItem>
-                                            {telemarketers.map((profile) => (
-                                                <SelectItem key={profile.id} value={profile.id} className="text-sm">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-5 h-5 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
-                                                            <span className="text-[10px] font-medium text-violet-600">
-                                                                {profile.full_name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || profile.email?.[0]?.toUpperCase() || "?"}
-                                                            </span>
+                                            {telemarketers.map((profile) => {
+                                                const initials = profile.full_name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || profile.email?.[0]?.toUpperCase() || "?"
+                                                return (
+                                                    <SelectItem key={profile.id} value={profile.id} className="text-sm">
+                                                        <div className="flex items-center gap-2">
+                                                            <Avatar className="w-5 h-5 flex-shrink-0 border border-border/50">
+                                                                <AvatarImage src={profile.image_url || undefined} />
+                                                                <AvatarFallback className="text-[10px] bg-muted text-foreground/70">{initials}</AvatarFallback>
+                                                            </Avatar>
+                                                            {profile.full_name || profile.email?.split("@")[0] || "Unknown"}
                                                         </div>
-                                                        {profile.full_name || profile.email?.split("@")[0] || "Unknown"}
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
+                                                    </SelectItem>
+                                                )
+                                            })}
                                         </SelectContent>
                                     </Select>
                                 </div>

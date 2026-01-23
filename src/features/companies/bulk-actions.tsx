@@ -34,12 +34,8 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { AnimatePresence, motion } from "framer-motion"
-
-interface Profile {
-    id: string
-    full_name: string | null
-    email: string | null
-}
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getTelemarketers, type Telemarketer } from "@/app/actions/get-telemarketers"
 
 interface BulkActionBarProps {
     selectedCount: number
@@ -122,19 +118,13 @@ export function BulkAssignDialog({
 }: BulkAssignDialogProps) {
     const [loading, setLoading] = React.useState(false)
     const [telemarketerId, setTelemarketerId] = React.useState<string>("")
-    const [profiles, setProfiles] = React.useState<Profile[]>([])
+    const [profiles, setProfiles] = React.useState<Telemarketer[]>([])
 
-    // Fetch telemarketer profiles on mount
+    // Fetch telemarketer profiles from Clerk on mount
     React.useEffect(() => {
         async function fetchProfiles() {
-            const supabase = createClient()
-            const { data } = await supabase
-                .from("profiles")
-                .select("id, full_name, email")
-                .eq("role", "telemarketer")
-                .order("full_name")
-
-            if (data) setProfiles(data)
+            const data = await getTelemarketers()
+            setProfiles(data)
         }
         fetchProfiles()
     }, [])
@@ -144,9 +134,12 @@ export function BulkAssignDialog({
         setLoading(true)
         try {
             const supabase = createClient()
+
+            const assignedTo = telemarketerId === "unassigned" ? null : telemarketerId
+
             const { error } = await supabase
                 .from("companies")
-                .update({ assigned_to: telemarketerId })
+                .update({ assigned_to: assignedTo })
                 .in("id", selectedIds)
 
             if (error) throw error
@@ -179,6 +172,9 @@ export function BulkAssignDialog({
                                 <SelectValue placeholder="Select team member" />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="unassigned" className="text-sm text-muted-foreground">
+                                    Unassigned
+                                </SelectItem>
                                 {profiles.map((profile) => {
                                     const initials = profile.full_name
                                         ? profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
@@ -186,9 +182,10 @@ export function BulkAssignDialog({
                                     return (
                                         <SelectItem key={profile.id} value={profile.id}>
                                             <div className="flex items-center gap-2">
-                                                <div className="w-5 h-5 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
-                                                    <span className="text-[10px] font-medium text-violet-600">{initials}</span>
-                                                </div>
+                                                <Avatar className="w-5 h-5 flex-shrink-0 border border-border/50">
+                                                    <AvatarImage src={profile.image_url || undefined} />
+                                                    <AvatarFallback className="text-[10px] bg-muted text-foreground/70">{initials}</AvatarFallback>
+                                                </Avatar>
                                                 <span>{profile.full_name || profile.email || "Unknown"}</span>
                                             </div>
                                         </SelectItem>

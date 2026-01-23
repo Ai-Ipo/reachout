@@ -58,6 +58,7 @@ export interface AssignedProfile {
     id: string
     full_name: string | null
     email: string | null
+    image_url: string | null
 }
 
 export interface Company {
@@ -522,7 +523,7 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                 remarks,
                 website,
                 assigned_to,
-                assigned_profile:profiles!assigned_to(id, full_name, email),
+                assigned_profile:profiles!assigned_to(id, full_name, email, image_url),
                 directors(id, din_no, name, contact_no, email, email_status, remark)
             `, { count: "exact" })
             .eq("city_id", cityId)

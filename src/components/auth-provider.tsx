@@ -67,7 +67,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                             clerk_id: user.id,
                             email: user.primaryEmailAddress?.emailAddress || null,
                             full_name: user.fullName || null,
-                            role: role, // Sync role from Clerk
+                            role: role,
+                            image_url: user.imageUrl || null,
                         })
 
                     if (error) {
@@ -83,6 +84,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                             email: user.primaryEmailAddress?.emailAddress || null,
                             full_name: user.fullName || null,
                             role: role,
+                            image_url: user.imageUrl || null,
                         })
                         .eq("clerk_id", user.id)
 
