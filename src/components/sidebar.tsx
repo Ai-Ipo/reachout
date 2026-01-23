@@ -49,6 +49,7 @@ export function SidebarComponent({ className }: SidebarProps) {
     const adminItems = [
         { href: `/`, label: "Home", icon: Home },
         { href: `/admin/team`, label: "Team", icon: Users },
+        { href: `/telemarketer/start`, label: "Pending", icon: Phone },
     ]
 
     const telemarketerItems = [
@@ -57,8 +58,8 @@ export function SidebarComponent({ className }: SidebarProps) {
 
     // Show appropriate items based on role
     const workspaceItems = isAdmin
-        ? [...adminItems, ...telemarketerItems] // Admins see everything
-        : telemarketerItems // Telemarketers only see their items
+        ? adminItems
+        : telemarketerItems
 
     // Unified active path checker that handles both tenant and non-tenant routes
     const isActivePath = (href: string) => {

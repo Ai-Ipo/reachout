@@ -9,6 +9,8 @@ import {
     getSortedRowModel,
     getPaginationRowModel,
     getFilteredRowModel,
+    getFacetedRowModel,
+    getFacetedUniqueValues,
     flexRender,
     type ColumnDef,
     type SortingState,
@@ -38,11 +40,11 @@ import { QuickWhatsappSelect } from "./quick-whatsapp-select"
 import { QuickBoardSelect } from "./quick-board-select"
 import { QuickAssignSelect } from "./quick-assign-select"
 import { formatCurrency, formatPercent, formatFinancialYear } from "@/lib/format"
-import { ArrowUpDown, Plus, Type, Hash, Building2, Users, Mail, Phone, Settings2, ExternalLink, ListFilter } from "lucide-react"
+import { ArrowUpDown, Plus, Type, Hash, Building2, Users, Mail, Phone, Settings2, ExternalLink } from "lucide-react"
 import { BulkActionBar, BulkAssignDialog, BulkDeleteDialog } from "./bulk-actions"
 import Link from "next/link"
-import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { CompanyTableToolbar } from "./company-table-toolbar"
 
 export interface Director {
     id: string
@@ -85,10 +87,12 @@ export interface Company {
 }
 
 interface CompanyDataTableProps {
-    cityId: string
+    cityId?: string
+    assignedTo?: string // Filter by telemarketer profile ID
     onAddCompany?: () => void
     refreshKey?: number
     onEditCompany?: (company: Company | null) => void
+    hideAssignColumn?: boolean // Hide the assign column when viewing a specific telemarketer
 }
 
 const TruncatedTooltipCell = ({ value, className }: { value: string | null | undefined, className?: string }) => {
@@ -140,19 +144,18 @@ const TruncatedTooltipCell = ({ value, className }: { value: string | null | und
     )
 }
 
-export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompany }: CompanyDataTableProps) {
+export function CompanyDataTable({ cityId, assignedTo, onAddCompany, refreshKey, onEditCompany, hideAssignColumn }: CompanyDataTableProps) {
     const [companies, setCompanies] = useState<Company[]>([])
     const [loading, setLoading] = useState(true)
     const [sorting, setSorting] = useState<SortingState>([])
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+        hideAssignColumn ? { assigned_to: false } : {}
+    )
     const [globalFilter, setGlobalFilter] = useState("")
     const [totalCount, setTotalCount] = useState(0)
     const [pageSize, setPageSize] = useState(50)
-    const [callingStatusFilter, setCallingStatusFilter] = useState<string[]>([])
-    const [eligibilityFilter, setEligibilityFilter] = useState<string[]>([])
-    const [assignmentFilter, setAssignmentFilter] = useState<"all" | "assigned" | "unassigned">("all")
     const [internalRefreshKey, setInternalRefreshKey] = useState(0)
 
     // Bulk Action State
@@ -380,6 +383,13 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                     />
                 )
             },
+            filterFn: (row, id, value) => {
+                const rowValue = row.getValue(id)
+                // Filter value is array of strings.
+                // If filter includes rowValue, return true.
+                if (rowValue === null || rowValue === undefined) return false
+                return value.includes(rowValue)
+            },
             size: 80,
         },
         {
@@ -408,7 +418,7 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
             minSize: 80,
         },
         {
-            id: "assigned",
+            accessorKey: "assigned_to",
             header: "Assigned",
             cell: ({ row }) => (
                 <QuickAssignSelect
@@ -423,6 +433,14 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                     }}
                 />
             ),
+            filterFn: (row, id, value) => {
+                // value is array of strings (user IDs or "unassigned")
+                const rowValue = row.getValue(id)
+                if (!rowValue) {
+                    return value.includes("unassigned")
+                }
+                return value.includes(rowValue)
+            },
             size: 120,
         },
         {
@@ -480,21 +498,17 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                     />
                 )
             },
+            filterFn: (row, id, value) => {
+                const rowValue = row.getValue(id)
+                // Filter by array inclusions
+                if (rowValue === null || rowValue === undefined) return false
+                return value.includes(rowValue)
+            },
             size: 80,
         },
     ], [])
 
-    // Sync filter state to column filters
-    useEffect(() => {
-        const filters: ColumnFiltersState = []
-        if (callingStatusFilter.length > 0) {
-            filters.push({ id: "calling_status", value: callingStatusFilter })
-        }
-        if (eligibilityFilter.length > 0) {
-            filters.push({ id: "eligibility_status", value: eligibilityFilter })
-        }
-        setColumnFilters(filters)
-    }, [callingStatusFilter, eligibilityFilter])
+
 
     // Fetch companies function (can be called silently)
     const fetchCompanies = useCallback(async (silent = false) => {
@@ -502,7 +516,7 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
         const token = await getToken({ template: "supabase", skipCache: true })
         const supabase = createClient(token)
 
-        const { data, error, count } = await supabase
+        let query = supabase
             .from("companies")
             .select(`
                 id,
@@ -526,8 +540,15 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
                 assigned_profile:profiles!assigned_to(id, full_name, email, image_url),
                 directors(id, din_no, name, contact_no, email, email_status, remark)
             `, { count: "exact" })
-            .eq("city_id", cityId)
-            .order("created_at", { ascending: false })
+
+        // Apply filter based on provided props
+        if (assignedTo) {
+            query = query.eq("assigned_to", assignedTo)
+        } else if (cityId) {
+            query = query.eq("city_id", cityId)
+        }
+
+        const { data, error, count } = await query.order("created_at", { ascending: false })
 
         if (error) {
             console.error("Error fetching companies:", error)
@@ -543,16 +564,16 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
             setTotalCount(count || 0)
         }
         if (!silent) setLoading(false)
-    }, [cityId, getToken])
+    }, [cityId, assignedTo, getToken])
 
     // Initial fetch and refresh on key change
     useEffect(() => {
-        if (cityId) fetchCompanies(false)
-    }, [cityId, refreshKey])
+        if (cityId || assignedTo) fetchCompanies(false)
+    }, [cityId, assignedTo, refreshKey])
 
     // Silent refresh when internalRefreshKey changes (after edits)
     useEffect(() => {
-        if (internalRefreshKey > 0 && cityId) fetchCompanies(true)
+        if (internalRefreshKey > 0 && (cityId || assignedTo)) fetchCompanies(true)
     }, [internalRefreshKey])
 
     // Optimistic update helper - updates a single company field locally
@@ -562,21 +583,16 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
         ))
     }, [])
 
-    // Filter by assignment status
-    const filteredByAssignment = useMemo(() => {
-        if (assignmentFilter === "all") return companies
-        if (assignmentFilter === "assigned") return companies.filter((c) => c.assigned_to)
-        return companies.filter((c) => !c.assigned_to)
-    }, [companies, assignmentFilter])
-
     // Table instance
     const table = useReactTable({
-        data: filteredByAssignment,
+        data: companies,
         columns,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
+        getFacetedRowModel: getFacetedRowModel(),
+        getFacetedUniqueValues: getFacetedUniqueValues(),
         onSortingChange: setSorting,
         onRowSelectionChange: setRowSelection,
         onColumnFiltersChange: setColumnFilters,
@@ -622,6 +638,7 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
         onEditCompany?.(company)
     }, [onEditCompany])
 
+
     if (loading) {
         return (
             <div className="space-y-0">
@@ -647,66 +664,11 @@ export function CompanyDataTable({ cityId, onAddCompany, refreshKey, onEditCompa
             <div className="flex-1 min-w-0">
                 <div className="space-y-0">
                     {/* Top Toolbar - Clean & Notion-like */}
-                    <div className="flex items-center justify-between py-3">
-                        <div className="flex items-center gap-3 flex-1">
-                            <Input
-                                placeholder="Search companies..."
-                                value={globalFilter ?? ""}
-                                onChange={(e) => setGlobalFilter(e.target.value)}
-                                className="h-8 w-[240px] bg-background/50"
-                            />
-                            {/* Future filters will go here */}
-                            <Button variant="outline" size="sm" className="h-8 border-dashed text-xs font-normal">
-                                <ListFilter className="w-3.5 h-3.5 mr-1.5" />
-                                Filter
-                            </Button>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-2 mr-2">
-                                <span className="text-xs text-muted-foreground">
-                                    {totalCount} companies
-                                </span>
-                            </div>
-
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                                        <Settings2 className="h-3.5 w-3.5 text-muted-foreground" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-[150px]">
-                                    {table
-                                        .getAllColumns()
-                                        .filter(
-                                            (column) =>
-                                                typeof column.accessorFn !== "undefined" && column.getCanHide()
-                                        )
-                                        .map((column) => {
-                                            return (
-                                                <DropdownMenuCheckboxItem
-                                                    key={column.id}
-                                                    className="capitalize text-xs"
-                                                    checked={column.getIsVisible()}
-                                                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                                                >
-                                                    {column.id.replace(/_/g, " ")}
-                                                </DropdownMenuCheckboxItem>
-                                            )
-                                        })}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-
-                            <Button
-                                onClick={onAddCompany}
-                                size="sm"
-                                className="h-8 px-3 text-xs font-medium"
-                            >
-                                <Plus className="w-3.5 h-3.5 mr-1.5" />
-                                New
-                            </Button>
-                        </div>
-                    </div>
+                    <CompanyTableToolbar
+                        table={table}
+                        totalCount={totalCount}
+                        onAddCompany={onAddCompany}
+                    />
 
                     {/* Table - Notion style */}
                     <div className="border border-border overflow-x-auto rounded-sm bg-background max-w-[calc(100vw-16rem)]">
