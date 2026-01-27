@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { boardTypeLabels, type BoardType } from "@/lib/schemas/company-schema"
 import { Check, Loader2 } from "lucide-react"
-
+import { StatusBadge, getBoardStatusVariant } from "@/components/ui/status-badge"
+import { useProfile } from "@/components/auth-provider"
+import { canEditField } from "@/lib/permissions"
 
 interface QuickBoardSelectProps {
     companyId: string
@@ -20,12 +22,12 @@ interface QuickBoardSelectProps {
     onOptimisticUpdate?: (newType: BoardType) => void
 }
 
-import { StatusBadge, getBoardStatusVariant } from "@/components/ui/status-badge"
-
 export function QuickBoardSelect({ companyId, currentType, onOptimisticUpdate }: QuickBoardSelectProps) {
     const [updating, setUpdating] = useState(false)
     const [open, setOpen] = useState(false)
     const { getToken } = useAuth()
+    const { profile } = useProfile()
+    const canEdit = canEditField(profile?.role, "board_type")
 
     async function handleTypeChange(newType: BoardType) {
         if (newType === currentType) {
@@ -62,6 +64,21 @@ export function QuickBoardSelect({ companyId, currentType, onOptimisticUpdate }:
         } finally {
             setUpdating(false)
         }
+    }
+
+    // Read-only view for users without edit permission
+    if (!canEdit) {
+        return (
+            <div className="w-full h-full flex items-center -mx-2 px-2">
+                {currentType ? (
+                    <StatusBadge variant={getBoardStatusVariant(currentType)} size="sm">
+                        {boardTypeLabels[currentType]}
+                    </StatusBadge>
+                ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
+                )}
+            </div>
+        )
     }
 
     return (

@@ -14,6 +14,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Check, Loader2, X } from "lucide-react"
 import { getTelemarketers, type Telemarketer } from "@/app/actions/get-telemarketers"
+import { useProfile } from "@/components/auth-provider"
+import { canEditField } from "@/lib/permissions"
 
 interface QuickAssignSelectProps {
     companyId: string
@@ -32,6 +34,8 @@ export function QuickAssignSelect({ companyId, currentAssignment, onOptimisticUp
     const [telemarketers, setTelemarketers] = useState<Telemarketer[]>([])
     const [loadingProfiles, setLoadingProfiles] = useState(false)
     const { getToken } = useAuth()
+    const { profile } = useProfile()
+    const canEdit = canEditField(profile?.role, "assigned_to")
 
     // Fetch telemarketers when dropdown opens
     useEffect(() => {
@@ -97,6 +101,29 @@ export function QuickAssignSelect({ companyId, currentAssignment, onOptimisticUp
             return email[0].toUpperCase()
         }
         return "?"
+    }
+
+    // Read-only view for users without edit permission
+    if (!canEdit) {
+        return (
+            <div className="w-full h-full flex items-center -mx-2 px-2">
+                {currentAssignment ? (
+                    <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-border bg-background max-w-full shadow-sm">
+                        <Avatar className="w-4 h-4 flex-shrink-0 border border-border/50">
+                            <AvatarImage src={currentAssignment.image_url || undefined} />
+                            <AvatarFallback className="text-[8px] bg-muted text-foreground/70">
+                                {getInitials(currentAssignment.full_name, currentAssignment.email)}
+                            </AvatarFallback>
+                        </Avatar>
+                        <span className="text-[11px] font-medium truncate text-foreground/80">
+                            {currentAssignment.full_name || currentAssignment.email?.split("@")[0] || "Unknown"}
+                        </span>
+                    </div>
+                ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
+                )}
+            </div>
+        )
     }
 
     return (

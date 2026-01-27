@@ -110,6 +110,7 @@ interface CompanyDataTableProps {
     hideAddButton?: boolean // Hide the add button in footer
     showCityColumn?: boolean // Show city column (for "All Cities" view)
     externalUpdate?: Company | null // Trigger optimistic update from external source
+    companyLinkBase?: string // Base URL for company links (default: /admin/companies)
 }
 
 const TruncatedTooltipCell = ({ value, className }: { value: string | null | undefined, className?: string }) => {
@@ -129,7 +130,7 @@ const TruncatedTooltipCell = ({ value, className }: { value: string | null | und
     )
 }
 
-export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callingStatusIn, onAddCompany, refreshKey, onEditCompany, hideAssignColumn, hideAddButton, showCityColumn, externalUpdate }: CompanyDataTableProps) {
+export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callingStatusIn, onAddCompany, refreshKey, onEditCompany, hideAssignColumn, hideAddButton, showCityColumn, externalUpdate, companyLinkBase = "/admin/companies" }: CompanyDataTableProps) {
     const [sorting, setSorting] = useState<SortingState>([])
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -310,7 +311,7 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
             ),
             cell: ({ row }) => (
                 <Link
-                    href={`/admin/companies/${row.original.id}`}
+                    href={`${companyLinkBase}/${row.original.id}`}
                     target="_blank"
                     className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 decoration-muted-foreground/30 hover:decoration-muted-foreground/50"
                     onClick={(e) => e.stopPropagation()}
@@ -338,7 +339,7 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
                 const name = row.getValue("name") as string
                 return (
                     <Link
-                        href={`/admin/companies/${row.original.id}`}
+                        href={`${companyLinkBase}/${row.original.id}`}
                         target="_blank"
                         className="group inline-flex items-center gap-1 max-w-full"
                         onClick={(e) => e.stopPropagation()}
@@ -627,7 +628,7 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
             },
             size: 80,
         },
-    ], [updateCompanyField, updateAssignedProfile])
+    ], [updateCompanyField, updateAssignedProfile, companyLinkBase])
 
     // Table instance
     const table = useReactTable({

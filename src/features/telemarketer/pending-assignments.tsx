@@ -345,6 +345,7 @@ export function TelemarketerAssignments({ onEditCompany, refreshKey }: Telemarke
                             hideAddButton
                             showCityColumn={selectedPendingCity === "all"}
                             refreshKey={refreshKey}
+                            companyLinkBase="/telemarketer/companies"
                         />
                     </>
                 )}
@@ -370,6 +371,7 @@ export function TelemarketerAssignments({ onEditCompany, refreshKey }: Telemarke
                             hideAddButton
                             showCityColumn={selectedCompletedCity === "all"}
                             refreshKey={refreshKey}
+                            companyLinkBase="/telemarketer/companies"
                         />
                     </>
                 )}

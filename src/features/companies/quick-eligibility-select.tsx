@@ -13,6 +13,8 @@ import {
 import { StatusBadge, getEligibilityStatusVariant } from "@/components/ui/status-badge"
 import { eligibilityStatusLabels, type EligibilityStatus } from "@/lib/schemas/company-schema"
 import { Check, Loader2 } from "lucide-react"
+import { useProfile } from "@/components/auth-provider"
+import { canEditField } from "@/lib/permissions"
 
 interface QuickEligibilitySelectProps {
     companyId: string
@@ -24,6 +26,8 @@ export function QuickEligibilitySelect({ companyId, currentStatus, onOptimisticU
     const [updating, setUpdating] = useState(false)
     const [open, setOpen] = useState(false)
     const { getToken } = useAuth()
+    const { profile } = useProfile()
+    const canEdit = canEditField(profile?.role, "eligibility_status")
 
     async function handleStatusChange(newStatus: EligibilityStatus) {
         if (newStatus === currentStatus) {
@@ -61,6 +65,17 @@ export function QuickEligibilitySelect({ companyId, currentStatus, onOptimisticU
         } finally {
             setUpdating(false)
         }
+    }
+
+    // Read-only view for users without edit permission
+    if (!canEdit) {
+        return (
+            <div className="w-full h-full flex items-center -mx-2 px-2">
+                <StatusBadge variant={getEligibilityStatusVariant(currentStatus)} size="sm">
+                    {eligibilityStatusLabels[currentStatus] || currentStatus}
+                </StatusBadge>
+            </div>
+        )
     }
 
     return (
