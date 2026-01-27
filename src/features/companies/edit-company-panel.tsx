@@ -45,42 +45,12 @@ import {
     getWhatsappStatusVariant
 } from "@/components/ui/status-badge"
 
-interface Director {
-    id?: string
-    din_no?: string
-    name?: string
-    contact_no?: string
-    email?: string
-    email_status?: string
-    remark?: string
-}
-
-interface Company {
-    id: string
-    internal_id: string
-    city_id: string
-    name: string
-    financial_year?: string
-    turnover?: number
-    profit?: number
-    borrowed_funds?: number
-    loan_interest?: number
-    eligibility_status: string
-    board_type?: string
-    official_mail?: string
-    calling_status: string
-    response?: string
-    whatsapp_status?: string
-    remarks?: string
-    website?: string
-    assigned_to?: string | null
-    directors: Director[]
-}
+import type { Company, Director } from "./company-data-table"
 
 interface EditCompanyPanelProps {
     company: Company
     onClose: () => void
-    onSuccess?: () => void
+    onSuccess?: (updatedCompany?: Company | null) => void
 }
 
 // Generate financial years
@@ -252,8 +222,50 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                 }
             }
 
-            toast.success("Company updated")
-            onSuccess?.()
+            // Fetch the complete updated company object to pass back
+            const { data: updatedCompany, error: fetchError } = await supabase
+                .from("companies")
+                .select(`
+                    id,
+                    internal_id,
+                    city_id,
+                    city:cities(id, name, short_code),
+                    name,
+                    financial_year,
+                    turnover,
+                    profit,
+                    borrowed_funds,
+                    loan_interest,
+                    eligibility_status,
+                    board_type,
+                    official_mail,
+                    calling_status,
+                    response,
+                    whatsapp_status,
+                    remarks,
+                    website,
+                    assigned_to,
+                    assigned_profile:profiles!assigned_to(id, full_name, email, image_url),
+                    directors(id, din_no, name, contact_no, email, email_status, remark)
+                `)
+                .eq("id", company.id)
+                .single()
+
+            if (fetchError) {
+                console.error("Error fetching updated company:", fetchError)
+                // Fallback to reload if fetch fails, but still success toast
+                onSuccess?.(null)
+            } else {
+                // Transform to match Company interface (handling relations)
+                const transformedCompany: Company = {
+                    ...updatedCompany,
+                    city: Array.isArray(updatedCompany.city) ? updatedCompany.city[0] : updatedCompany.city,
+                    assigned_profile: Array.isArray(updatedCompany.assigned_profile) ? updatedCompany.assigned_profile[0] : updatedCompany.assigned_profile,
+                }
+
+                toast.success("Company updated")
+                onSuccess?.(transformedCompany)
+            }
         } catch (error) {
             console.error("Error updating company:", error)
             toast.error("Failed to update company")

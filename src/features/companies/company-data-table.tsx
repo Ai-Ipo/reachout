@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useMemo, useCallback, useRef, useLayoutEffect } from "react"
+import { useState, useMemo, useCallback, useRef, useLayoutEffect, useEffect } from "react"
 import useSWR from "swr"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@clerk/nextjs"
+import { toast } from "sonner"
 import {
     useReactTable,
     getCoreRowModel,
@@ -105,6 +106,7 @@ interface CompanyDataTableProps {
     hideAssignColumn?: boolean // Hide the assign column when viewing a specific telemarketer
     hideAddButton?: boolean // Hide the add button in footer
     showCityColumn?: boolean // Show city column (for "All Cities" view)
+    externalUpdate?: Company | null // Trigger optimistic update from external source
 }
 
 const TruncatedTooltipCell = ({ value, className }: { value: string | null | undefined, className?: string }) => {
@@ -156,7 +158,7 @@ const TruncatedTooltipCell = ({ value, className }: { value: string | null | und
     )
 }
 
-export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callingStatusIn, onAddCompany, refreshKey, onEditCompany, hideAssignColumn, hideAddButton, showCityColumn }: CompanyDataTableProps) {
+export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callingStatusIn, onAddCompany, refreshKey, onEditCompany, hideAssignColumn, hideAddButton, showCityColumn, externalUpdate }: CompanyDataTableProps) {
     const [sorting, setSorting] = useState<SortingState>([])
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -677,10 +679,20 @@ export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callin
     const selectedCount = Object.keys(rowSelection).length
     const filteredCount = table.getFilteredRowModel().rows.length
 
-    // Handle edit panel close and refresh
     const handleEditSuccess = useCallback(() => {
         setInternalRefreshKey(k => k + 1)
     }, [])
+
+    // React to external updates (e.g. from sidebar)
+    useEffect(() => {
+        if (externalUpdate && data) {
+            const updatedCompanies = data.companies.map(c =>
+                c.id === externalUpdate.id ? externalUpdate : c
+            )
+            mutate({ ...data, companies: updatedCompanies }, { revalidate: false })
+            // No toast here as the editing component likely showed one
+        }
+    }, [externalUpdate, data, mutate])
 
     const handleRowClick = useCallback((company: Company, event: React.MouseEvent) => {
         // Don't open edit if clicking on calling cell, checkbox or interactive elements

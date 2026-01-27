@@ -83,6 +83,9 @@ export default function CityDetailPage() {
         }
     }
 
+    // State for optimistic updates
+    const [externalUpdate, setExternalUpdate] = useState<Company | null>(null)
+
     function handleCompanyAdded() {
         setRefreshKey(k => k + 1)
         mutate() // Update count
@@ -178,6 +181,7 @@ export default function CityDetailPage() {
                             cityId={cityId}
                             onAddCompany={() => setAddDialogOpen(true)}
                             onEditCompany={setEditingCompany}
+                            externalUpdate={externalUpdate}
                         />
                     </div>
 
@@ -199,8 +203,16 @@ export default function CityDetailPage() {
                     <EditCompanyPanel
                         company={editingCompany}
                         onClose={() => setEditingCompany(null)}
-                        onSuccess={() => {
-                            setRefreshKey(k => k + 1)
+                        onSuccess={(updatedCompany) => {
+                            if (updatedCompany) {
+                                // Optimistically update table
+                                setExternalUpdate(updatedCompany)
+                                // Update the currently edited company so sidebar reflects changes
+                                setEditingCompany(updatedCompany)
+                            } else {
+                                // Fallback for errors or non-returning updates
+                                setRefreshKey(k => k + 1)
+                            }
                         }}
                     />
                 </div>
