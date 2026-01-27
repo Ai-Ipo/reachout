@@ -180,7 +180,7 @@ export function TelemarketerAssignments({ onEditCompany, refreshKey }: Telemarke
             .from("companies")
             .select("city_id")
             .eq("assigned_to", profileData.id)
-            .eq("eligibility_status", "pending")
+            .eq("eligibility_status", "eligible")
 
         if (pendingCompanies && pendingCompanies.length > 0) {
             const cityCounts = pendingCompanies.reduce<Record<string, number>>((acc, c) => {
@@ -334,7 +334,7 @@ export function TelemarketerAssignments({ onEditCompany, refreshKey }: Telemarke
                         <CompanyDataTable
                             cityId={selectedPendingCity === "all" ? undefined : selectedPendingCity}
                             assignedTo={supabaseProfileId || undefined}
-                            eligibilityStatus="pending"
+                            eligibilityStatus="eligible"
                             onEditCompany={onEditCompany}
                             hideAssignColumn
                             hideAddButton

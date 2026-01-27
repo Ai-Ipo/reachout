@@ -20,7 +20,7 @@ export interface TelemarketerStats {
     }
 }
 
-export async function getTeamStats(): Promise<TelemarketerStats[]> {
+export async function getTeamStats(cityId?: string): Promise<TelemarketerStats[]> {
     try {
         const client = await clerkClient()
         const { data: users } = await client.users.getUserList({ limit: 100 })
@@ -52,10 +52,16 @@ export async function getTeamStats(): Promise<TelemarketerStats[]> {
         const profileIds = profiles.map(p => p.id)
 
         // Get company counts grouped by assigned_to and calling_status
-        const { data: companyCounts } = await supabase
+        let query = supabase
             .from("companies")
             .select("assigned_to, calling_status")
             .in("assigned_to", profileIds)
+
+        if (cityId && cityId !== 'all') {
+            query = query.eq("city_id", cityId)
+        }
+
+        const { data: companyCounts } = await query
 
         // Build stats per telemarketer
         const statsMap = new Map<string, TelemarketerStats["stats"]>()

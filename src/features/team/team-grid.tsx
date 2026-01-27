@@ -12,14 +12,47 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
+import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@clerk/nextjs"
+import { useCallback } from "react"
+import { MapPin } from "lucide-react"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 
 export function TeamGrid() {
+    const { getToken } = useAuth()
+    const [selectedCity, setSelectedCity] = useState<string>("all")
+
     const { data: telemarketers = [], isLoading, mutate } = useSWR(
-        'team-stats',
-        getTeamStats,
+        ['team-stats', selectedCity],
+        ([_, cityId]) => getTeamStats(cityId),
         {
             revalidateOnFocus: false,
             dedupingInterval: 30000,
+        }
+    )
+
+    const fetchCities = useCallback(async () => {
+        const token = await getToken({ template: "supabase", skipCache: true })
+        const supabase = createClient(token)
+        const { data } = await supabase
+            .from("cities")
+            .select("id, name, short_code")
+            .order("name")
+        return data || []
+    }, [getToken])
+
+    const { data: cities = [] } = useSWR(
+        'cities',
+        fetchCities,
+        {
+            revalidateOnFocus: false,
+            dedupingInterval: 60000,
         }
     )
     const [selectedTelemarketer, setSelectedTelemarketer] = useState<TelemarketerStats | null>(null)
@@ -67,6 +100,29 @@ export function TeamGrid() {
 
     return (
         <>
+            {/* City Filter */}
+            <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4" />
+                    <span>Filter:</span>
+                </div>
+                <Select value={selectedCity} onValueChange={setSelectedCity}>
+                    <SelectTrigger className="w-[200px] bg-background">
+                        <SelectValue placeholder="All Cities" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">
+                            All Cities
+                        </SelectItem>
+                        {cities.map(city => (
+                            <SelectItem key={city.id} value={city.id}>
+                                {city.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
             {/* Summary stats */}
             <div className="grid grid-cols-4 gap-4 mb-6">
                 <div className="bg-muted/30 rounded-lg p-4">

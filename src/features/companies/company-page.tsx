@@ -168,11 +168,6 @@ export function CompanyPage({ company, backUrl, backLabel = "Back" }: CompanyPag
                         </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <StatusBadge variant={getEligibilityStatusVariant(company.eligibility_status)}>
-                        {eligibilityStatusLabels[company.eligibility_status as keyof typeof eligibilityStatusLabels] || company.eligibility_status}
-                    </StatusBadge>
-                </div>
             </div>
 
             {/* Main Content */}
@@ -182,6 +177,18 @@ export function CompanyPage({ company, backUrl, backLabel = "Back" }: CompanyPag
                     {/* Zone A: Context Deck (Scrollable) */}
                     <div className="flex-1 overflow-y-auto min-h-0">
                         <div className="p-5 space-y-6">
+
+                            {/* Eligibility Status */}
+                            <section>
+                                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Eligibility Status</h3>
+                                <div>
+                                    <StatusBadge variant={getEligibilityStatusVariant(company.eligibility_status)}>
+                                        {eligibilityStatusLabels[company.eligibility_status as keyof typeof eligibilityStatusLabels] || company.eligibility_status}
+                                    </StatusBadge>
+                                </div>
+                            </section>
+
+                            <div className="h-px bg-border" />
 
                             {/* Directors - Top Priority */}
                             <section>
@@ -370,7 +377,7 @@ export function CompanyPage({ company, backUrl, backLabel = "Back" }: CompanyPag
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     )
 }
 
