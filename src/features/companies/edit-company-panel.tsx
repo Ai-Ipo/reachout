@@ -155,6 +155,31 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
         })
     }, [company, form])
 
+    // Reset form when company changes (fix for stale data)
+    useEffect(() => {
+        if (company) {
+            form.reset({
+                name: company.name,
+                city_id: company.city_id,
+                financial_year: company.financial_year || "",
+                turnover: company.turnover?.toString() || "",
+                profit: company.profit?.toString() || "",
+                borrowed_funds: company.borrowed_funds?.toString() || "",
+                loan_interest: company.loan_interest?.toString() || "",
+                eligibility_status: company.eligibility_status as "eligible" | "ineligible" | "pending",
+                board_type: (company.board_type || "") as "private" | "public" | "llp" | "opc" | "nidhi",
+                official_mail: company.official_mail || "",
+                calling_status: company.calling_status as "pending" | "interested" | "not_interested" | "not_contactable",
+                response: company.response || "",
+                whatsapp_status: (company.whatsapp_status || "neutral") as "neutral" | "sent" | "received" | "failed",
+                remarks: company.remarks || "",
+                website: company.website || "",
+                assigned_to: company.assigned_to || "unassigned",
+                directors: company.directors || [{ name: "", contact_no: "" }]
+            })
+        }
+    }, [company, form])
+
     async function onSubmit(data: CompanyFormData) {
         setSaving(true)
         try {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import useSWR from "swr"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@clerk/nextjs"
@@ -16,6 +16,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+
+
+const COMPLETED_STATUSES = ["interested", "not_interested", "not_contactable"]
 
 interface City {
     id: string
@@ -138,10 +141,57 @@ export function PendingAssignments({ onEditCompany, refreshKey }: PendingAssignm
                 hideAddButton
                 showCityColumn={selectedCity === "all"}
                 refreshKey={refreshKey}
+                externalUpdate={null} // PendingAssignments manages state via parents refreshKey for now
             />
         </>
     )
 }
+
+// Extracted to module level to prevent re-creation on every render
+const EmptyState = ({ message }: { message: string }) => (
+    <div className="flex flex-col items-center justify-center h-[30vh] space-y-4">
+        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+            <Building2 className="w-6 h-6 text-muted-foreground" />
+        </div>
+        <div className="text-center">
+            <p className="text-sm text-muted-foreground">{message}</p>
+        </div>
+    </div>
+)
+
+const CitySelector = ({
+    cities,
+    selectedCity,
+    onSelect,
+    totalCount
+}: {
+    cities: City[]
+    selectedCity: string
+    onSelect: (value: string) => void
+    totalCount: number
+}) => (
+    <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <MapPin className="w-4 h-4" />
+            <span>City:</span>
+        </div>
+        <Select value={selectedCity} onValueChange={onSelect}>
+            <SelectTrigger className="w-[200px]">
+                <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">
+                    All Cities ({totalCount})
+                </SelectItem>
+                {cities.map(city => (
+                    <SelectItem key={city.id} value={city.id}>
+                        {city.name} ({city.count})
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    </div>
+)
 
 interface TelemarketerAssignmentsProps {
     onEditCompany: (company: Company | null) => void
@@ -240,6 +290,7 @@ export function TelemarketerAssignments({ onEditCompany, refreshKey }: Telemarke
         }
     }, [getToken, profile?.id])
 
+
     const { data, isLoading } = useSWR(
         profile ? ['telemarketer-assignments', refreshKey] : null,
         fetchAssignmentData,
@@ -252,6 +303,7 @@ export function TelemarketerAssignments({ onEditCompany, refreshKey }: Telemarke
     const supabaseProfileId = data?.supabaseProfileId || null
     const pendingCities = data?.pendingCities || []
     const completedCities = data?.completedCities || []
+    const completedTotal = completedCities.reduce((sum, c) => sum + (c.count || 0), 0)
 
     if (isLoading) {
         return (
@@ -262,53 +314,6 @@ export function TelemarketerAssignments({ onEditCompany, refreshKey }: Telemarke
     }
 
     const pendingTotal = pendingCities.reduce((sum, c) => sum + (c.count || 0), 0)
-    const completedTotal = completedCities.reduce((sum, c) => sum + (c.count || 0), 0)
-
-    const EmptyState = ({ message }: { message: string }) => (
-        <div className="flex flex-col items-center justify-center h-[30vh] space-y-4">
-            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-muted-foreground" />
-            </div>
-            <div className="text-center">
-                <p className="text-sm text-muted-foreground">{message}</p>
-            </div>
-        </div>
-    )
-
-    const CitySelector = ({
-        cities,
-        selectedCity,
-        onSelect,
-        totalCount
-    }: {
-        cities: City[]
-        selectedCity: string
-        onSelect: (value: string) => void
-        totalCount: number
-    }) => (
-        <div className="flex items-center gap-3 mb-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="w-4 h-4" />
-                <span>City:</span>
-            </div>
-            <Select value={selectedCity} onValueChange={onSelect}>
-                <SelectTrigger className="w-[200px]">
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">
-                        All Cities ({totalCount})
-                    </SelectItem>
-                    {cities.map(city => (
-                        <SelectItem key={city.id} value={city.id}>
-                            {city.name} ({city.count})
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        </div>
-    )
-
     return (
         <Tabs defaultValue="pending" className="w-full">
             <TabsList>
@@ -359,7 +364,7 @@ export function TelemarketerAssignments({ onEditCompany, refreshKey }: Telemarke
                         <CompanyDataTable
                             cityId={selectedCompletedCity === "all" ? undefined : selectedCompletedCity}
                             assignedTo={supabaseProfileId || undefined}
-                            callingStatusIn={["interested", "not_interested", "not_contactable"]}
+                            callingStatusIn={COMPLETED_STATUSES}
                             onEditCompany={onEditCompany}
                             hideAssignColumn
                             hideAddButton

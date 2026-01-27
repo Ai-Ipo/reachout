@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback, useRef, useLayoutEffect, useEffect } from "react"
+import React, { useState, useMemo, useCallback, useRef, useLayoutEffect, useEffect } from "react"
 import useSWR from "swr"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@clerk/nextjs"
@@ -47,6 +47,9 @@ import { BulkActionBar, BulkAssignDialog, BulkDeleteDialog } from "./bulk-action
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { CompanyTableToolbar } from "./company-table-toolbar"
+
+// Stable empty array to prevent infinite rerenders when data is undefined
+const EMPTY_COMPANIES: Company[] = []
 
 export interface Director {
     id: string
@@ -110,46 +113,14 @@ interface CompanyDataTableProps {
 }
 
 const TruncatedTooltipCell = ({ value, className }: { value: string | null | undefined, className?: string }) => {
-    const [isTruncated, setIsTruncated] = useState(false)
-    const ref = useRef<HTMLSpanElement>(null)
-
-    useLayoutEffect(() => {
-        const element = ref.current
-        if (!element) return
-
-        const checkTruncation = () => {
-            if (element) {
-                // Use a small threshold for sub-pixel rendering differences
-                setIsTruncated(element.scrollWidth > element.clientWidth + 0.5)
-            }
-        }
-
-        const observer = new ResizeObserver(checkTruncation)
-        observer.observe(element)
-        // Check immediately and on next frame to ensure layout is settled
-        checkTruncation()
-        requestAnimationFrame(checkTruncation)
-
-        return () => observer.disconnect()
-    }, [value])
-
     if (!value) return <span className="text-muted-foreground">-</span>
-
-    const content = (
-        <span
-            ref={ref}
-            className={cn("truncate block w-full cursor-default min-w-0", className)}
-        >
-            {value}
-        </span>
-    )
-
-    if (!isTruncated) return content
 
     return (
         <Tooltip>
             <TooltipTrigger asChild>
-                {content}
+                <div className={cn("truncate", className)}>
+                    {value}
+                </div>
             </TooltipTrigger>
             <TooltipContent>
                 <p className="max-w-[300px] break-words text-xs">{value}</p>
@@ -158,7 +129,7 @@ const TruncatedTooltipCell = ({ value, className }: { value: string | null | und
     )
 }
 
-export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callingStatusIn, onAddCompany, refreshKey, onEditCompany, hideAssignColumn, hideAddButton, showCityColumn, externalUpdate }: CompanyDataTableProps) {
+export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callingStatusIn, onAddCompany, refreshKey, onEditCompany, hideAssignColumn, hideAddButton, showCityColumn, externalUpdate }: CompanyDataTableProps) {
     const [sorting, setSorting] = useState<SortingState>([])
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -247,9 +218,11 @@ export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callin
         return { companies: transformed, totalCount: count || 0 }
     }, [cityId, assignedTo, eligibilityStatus, callingStatusIn, getToken])
 
-    // SWR key based on filters
-    const swrKey = cityId || assignedTo || eligibilityStatus || callingStatusIn || showCityColumn
-        ? ['companies', cityId, assignedTo, eligibilityStatus, callingStatusIn?.join(','), refreshKey, internalRefreshKey]
+    // SWR key based on filters - use stable string key to prevent infinite loops
+    const callingStatusKey = callingStatusIn?.length ? callingStatusIn.join(',') : ''
+    const hasFilters = cityId || assignedTo || eligibilityStatus || (callingStatusIn && callingStatusIn.length > 0) || showCityColumn
+    const swrKey = hasFilters
+        ? `companies-${cityId || 'all'}-${assignedTo || 'any'}-${eligibilityStatus || 'any'}-${callingStatusKey}-${refreshKey}-${internalRefreshKey}`
         : null
 
     const { data, isLoading, mutate } = useSWR<CompaniesData>(
@@ -261,28 +234,42 @@ export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callin
         }
     )
 
-    const companies: Company[] = data?.companies || []
+    const companies: Company[] = data?.companies ?? EMPTY_COMPANIES
     const totalCount = data?.totalCount || 0
 
-    // Optimistic update helper - updates companies locally via SWR
+    // Use refs for stable callback references to prevent columns from recalculating
+    const dataRef = useRef(data)
+    const mutateRef = useRef(mutate)
+
+    // Keep refs updated
+    useLayoutEffect(() => {
+        dataRef.current = data
+        mutateRef.current = mutate
+    }, [data, mutate])
+
+    // Optimistic update helper - stable callback using refs
     const updateCompanyField = useCallback((companyId: string, field: keyof Company, value: unknown) => {
-        if (!data) return
-        const updatedCompanies = data.companies.map(c =>
+        const currentData = dataRef.current
+        const currentMutate = mutateRef.current
+        if (!currentData) return
+        const updatedCompanies = currentData.companies.map(c =>
             c.id === companyId ? { ...c, [field]: value } : c
         )
-        mutate({ ...data, companies: updatedCompanies as typeof data.companies }, { revalidate: false })
-    }, [mutate, data])
+        currentMutate({ ...currentData, companies: updatedCompanies as typeof currentData.companies }, { revalidate: false })
+    }, []) // Empty deps - uses refs
 
-    // Update assigned profile optimistically
+    // Update assigned profile optimistically - stable callback using refs
     const updateAssignedProfile = useCallback((companyId: string, profile: AssignedProfile | null) => {
-        if (!data) return
-        const updatedCompanies = data.companies.map(c =>
+        const currentData = dataRef.current
+        const currentMutate = mutateRef.current
+        if (!currentData) return
+        const updatedCompanies = currentData.companies.map(c =>
             c.id === companyId
                 ? { ...c, assigned_to: profile?.id || null, assigned_profile: profile }
                 : c
         )
-        mutate({ ...data, companies: updatedCompanies as typeof data.companies }, { revalidate: false })
-    }, [mutate, data])
+        currentMutate({ ...currentData, companies: updatedCompanies as typeof currentData.companies }, { revalidate: false })
+    }, []) // Empty deps - uses refs
 
     // Column definitions - Notion-style with semantic colors
     const columns = useMemo<ColumnDef<Company>[]>(() => [
@@ -683,12 +670,28 @@ export function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callin
         setInternalRefreshKey(k => k + 1)
     }, [])
 
+    const lastProcessedUpdate = useRef<string | null>(null)
+
     // React to external updates (e.g. from sidebar)
     useEffect(() => {
         if (externalUpdate && data) {
-            const updatedCompanies = data.companies.map(c =>
-                c.id === externalUpdate.id ? externalUpdate : c
-            )
+            // Prevent processing the same update multiple times
+            if (lastProcessedUpdate.current === externalUpdate.id) return
+
+            // Check if the item exists in the current view
+            const index = data.companies.findIndex(c => c.id === externalUpdate.id)
+            if (index === -1) return // Not in this view (e.g. filtered out), so don't mutate
+
+            // Check if it's already updated (deep check not strictly needed if we trust the Ref, but good for safety)
+            const existing = data.companies[index]
+            if (existing === externalUpdate) return
+
+            const updatedCompanies = [...data.companies]
+            updatedCompanies[index] = externalUpdate
+
+            // Mark as processed BEFORE mutating to be safe, though ref holds value synchronously
+            lastProcessedUpdate.current = externalUpdate.id
+
             mutate({ ...data, companies: updatedCompanies }, { revalidate: false })
             // No toast here as the editing component likely showed one
         }

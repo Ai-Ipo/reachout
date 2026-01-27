@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from "react"
 import { useAuth, useUser } from "@clerk/nextjs"
 import { createClient } from "@/lib/supabase/client"
 
@@ -104,19 +104,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const isLoading = !isLoaded
 
-    const profile: UserProfile | null = isSignedIn && user ? {
-        id: user.id,
-        email: user.primaryEmailAddress?.emailAddress || null,
-        full_name: user.fullName || null,
-        role,
-    } : null
+    const profile: UserProfile | null = useMemo(() => {
+        // console.log("[AuthProvider] Recalculating profile", { isSignedIn, userId: user?.id })
+        return isSignedIn && user ? {
+            id: user.id,
+            email: user.primaryEmailAddress?.emailAddress || null,
+            full_name: user.fullName || null,
+            role,
+        } : null
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isSignedIn, user?.id, user?.primaryEmailAddress?.emailAddress, user?.fullName, role])
 
-    const value: AuthContextType = {
+    const value: AuthContextType = useMemo(() => ({
         profile,
         isLoading,
         isAdmin: role === "admin",
         isTelemarketer: role === "telemarketer" || role === "admin",
-    }
+    }), [profile, isLoading, role])
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

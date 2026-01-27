@@ -87,9 +87,16 @@ export function TelemarketerDetailSheet({ telemarketer, open, onOpenChange }: Te
                             <EditCompanyPanel
                                 company={editingCompany}
                                 onClose={() => setEditingCompany(null)}
-                                onSuccess={() => {
-                                    setEditingCompany(null)
-                                    setRefreshKey(prev => prev + 1)
+                                onSuccess={(updatedCompany) => {
+                                    if (updatedCompany) {
+                                        // Update local state to reflect changes immediately
+                                        setEditingCompany(updatedCompany)
+                                        // Also trigger list refresh
+                                        setRefreshKey(prev => prev + 1)
+                                    } else {
+                                        setEditingCompany(null)
+                                        setRefreshKey(prev => prev + 1)
+                                    }
                                 }}
                             />
                         </div>
