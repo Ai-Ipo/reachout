@@ -14,6 +14,7 @@ import {
     MapPin,
     Building2,
     Users,
+    UserCog,
     Phone,
     Loader2
 } from "lucide-react"
@@ -49,6 +50,7 @@ export function SidebarComponent({ className }: SidebarProps) {
     const adminItems = [
         { href: `/`, label: "Home", icon: Home },
         { href: `/admin/team`, label: "Team", icon: Users },
+        { href: `/admin/users`, label: "Users", icon: UserCog },
         { href: `/telemarketer/start`, label: "Pending", icon: Phone },
     ]
 
