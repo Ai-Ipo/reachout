@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "AI IPO Exporter",
+  "version": "1.0.0",
+  "description": "Export table data from Tofler to CSV",
+  "permissions": [],
+  "host_permissions": [
+    "https://www.tofler.in/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.tofler.in/*"],
+      "js": ["content.js"],
+      "css": ["style.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}
