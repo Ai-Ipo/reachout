@@ -24,6 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Upload, FileUp, AlertCircle, CheckCircle, Loader2, X } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
+import { toast } from "sonner"
 import {
     detectColumnMapping,
     validateMapping,
@@ -205,6 +206,7 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                     const { error } = await supabase.from("companies").insert(chunk)
                     if (error) {
                         console.error("Insert error:", error)
+                        toast.error(`Failed to insert batch: ${error.message}`)
                         errorCount += chunk.length
                     } else {
                         addedCount += chunk.length
@@ -220,10 +222,16 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
             setStep("result")
 
             if (addedCount > 0) {
+                toast.success(`Successfully imported ${addedCount} companies`)
                 onSuccess()
+            }
+
+            if (errorCount > 0) {
+                toast.error(`${errorCount} companies failed to import`)
             }
         } catch (err) {
             console.error("Import error:", err)
+            toast.error("Import failed. Please try again.")
             setResult({
                 added: 0,
                 duplicates: stats.duplicates,
