@@ -240,17 +240,15 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
             let errorCount = 0
 
             if (toInsert.length > 0) {
-                // Batch insert in chunks of 100
-                const chunkSize = 100
-                for (let i = 0; i < toInsert.length; i += chunkSize) {
-                    const chunk = toInsert.slice(i, i + chunkSize)
-                    const { error } = await supabase.from("companies").insert(chunk)
+                // Insert one at a time to allow internal_id trigger to work correctly
+                // (The trigger uses count(*) which doesn't work with bulk inserts)
+                for (const company of toInsert) {
+                    const { error } = await supabase.from("companies").insert(company)
                     if (error) {
                         console.error("Insert error:", error)
-                        toast.error(`Failed to insert batch: ${error.message}`)
-                        errorCount += chunk.length
+                        errorCount++
                     } else {
-                        addedCount += chunk.length
+                        addedCount++
                     }
                 }
             }
