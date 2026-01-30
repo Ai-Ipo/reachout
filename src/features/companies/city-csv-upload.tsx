@@ -272,7 +272,8 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
             }
         } catch (err) {
             console.error("Import error:", err)
-            toast.error("Import failed. Please try again.")
+            const errorMessage = err instanceof Error ? err.message : String(err)
+            toast.error(`Import failed: ${errorMessage}`)
             setResult({
                 added: 0,
                 duplicates: stats.duplicates,
