@@ -22,7 +22,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Upload, FileUp, AlertCircle, CheckCircle, Loader2, X } from "lucide-react"
+import { Upload, FileUp, AlertCircle, CheckCircle, Loader2, Trash2, ExternalLink } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
 import { toast } from "sonner"
 import {
@@ -45,6 +45,8 @@ interface ParsedRow {
     original: Record<string, string>
     mapped: Record<string, string | null> | null
     isDuplicate?: boolean
+    duplicateId?: string // ID of existing company if duplicate
+    isRemoved?: boolean // User removed this row from import
 }
 
 interface UploadResult {
@@ -82,11 +84,20 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
     // Stats for preview
     const stats = useMemo(() => {
         const total = parsedData.length
-        const valid = parsedData.filter(r => r.mapped !== null).length
-        const duplicates = parsedData.filter(r => r.isDuplicate).length
-        const toImport = parsedData.filter(r => r.mapped !== null && !r.isDuplicate).length
-        return { total, valid, duplicates, toImport }
+        const removed = parsedData.filter(r => r.isRemoved).length
+        const valid = parsedData.filter(r => r.mapped !== null && !r.isRemoved).length
+        const duplicates = parsedData.filter(r => r.isDuplicate && !r.isRemoved).length
+        const invalid = parsedData.filter(r => r.mapped === null && !r.isRemoved).length
+        const toImport = parsedData.filter(r => r.mapped !== null && !r.isDuplicate && !r.isRemoved).length
+        return { total, valid, duplicates, invalid, removed, toImport }
     }, [parsedData])
+
+    // Remove a row from import
+    const handleRemoveRow = (index: number) => {
+        setParsedData(prev => prev.map((row, i) =>
+            i === index ? { ...row, isRemoved: true } : row
+        ))
+    }
 
     const resetState = () => {
         setStep("upload")
@@ -146,18 +157,23 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
 
                     const { data: existingCompanies } = await supabase
                         .from("companies")
-                        .select("name")
+                        .select("id, name")
                         .eq("city_id", cityId)
 
-                    const existingNames = new Set(
-                        existingCompanies?.map(c => c.name?.toLowerCase().trim()) || []
+                    // Create a map of lowercase name -> company id
+                    const existingNameMap = new Map(
+                        existingCompanies?.map(c => [c.name?.toLowerCase().trim(), c.id]) || []
                     )
 
-                    // Mark duplicates
+                    // Mark duplicates and store the existing company ID
                     for (const row of mapped) {
                         if (row.mapped?.name) {
                             const normalizedName = row.mapped.name.toLowerCase().trim()
-                            row.isDuplicate = existingNames.has(normalizedName)
+                            const existingId = existingNameMap.get(normalizedName)
+                            if (existingId) {
+                                row.isDuplicate = true
+                                row.duplicateId = existingId
+                            }
                         }
                     }
                 } catch (err) {
@@ -182,9 +198,9 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
             const token = await getToken({ template: "supabase", skipCache: true })
             const supabase = createClient(token)
 
-            // Filter to valid, non-duplicate rows
+            // Filter to valid, non-duplicate, non-removed rows
             const toInsert = parsedData
-                .filter(r => r.mapped !== null && !r.isDuplicate)
+                .filter(r => r.mapped !== null && !r.isDuplicate && !r.isRemoved)
                 .map(r => ({
                     city_id: cityId,
                     name: r.mapped!.name,
@@ -346,41 +362,72 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                                     <TableHeader className="sticky top-0 bg-background z-10">
                                         <TableRow>
                                             <TableHead className="w-[50px]">#</TableHead>
-                                            <TableHead className="w-[100px]">Status</TableHead>
+                                            <TableHead className="w-[120px]">Status</TableHead>
                                             {mappedFields.map(field => (
                                                 <TableHead key={field}>{FIELD_LABELS[field]}</TableHead>
                                             ))}
+                                            <TableHead className="w-[100px] text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {parsedData.map((row, index) => (
-                                            <TableRow
-                                                key={index}
-                                                className={
-                                                    row.mapped === null
-                                                        ? "bg-destructive/10"
-                                                        : row.isDuplicate
-                                                            ? "bg-status-warning-muted"
-                                                            : ""
-                                                }
-                                            >
-                                                <TableCell className="text-muted-foreground">{index + 1}</TableCell>
-                                                <TableCell>
-                                                    {row.mapped === null ? (
-                                                        <Badge variant="destructive" className="text-xs">Invalid</Badge>
-                                                    ) : row.isDuplicate ? (
-                                                        <Badge variant="secondary" className="text-xs bg-status-warning-muted text-status-warning-foreground">Duplicate</Badge>
-                                                    ) : (
-                                                        <Badge variant="secondary" className="text-xs bg-status-success-muted text-status-success">Ready</Badge>
-                                                    )}
-                                                </TableCell>
-                                                {mappedFields.map(field => (
-                                                    <TableCell key={field} className="max-w-[200px] truncate">
-                                                        {row.mapped?.[field] || "-"}
+                                        {parsedData.map((row, index) => {
+                                            if (row.isRemoved) return null
+
+                                            return (
+                                                <TableRow
+                                                    key={index}
+                                                    className={
+                                                        row.mapped === null
+                                                            ? "bg-destructive/10"
+                                                            : row.isDuplicate
+                                                                ? "bg-status-warning-muted"
+                                                                : ""
+                                                    }
+                                                >
+                                                    <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                                                    <TableCell>
+                                                        {row.mapped === null ? (
+                                                            <Badge variant="destructive" className="text-xs">Invalid</Badge>
+                                                        ) : row.isDuplicate ? (
+                                                            <Badge variant="secondary" className="text-xs bg-status-warning-muted text-status-warning-foreground">Duplicate</Badge>
+                                                        ) : (
+                                                            <Badge variant="secondary" className="text-xs bg-status-success-muted text-status-success">Ready</Badge>
+                                                        )}
                                                     </TableCell>
-                                                ))}
-                                            </TableRow>
-                                        ))}
+                                                    {mappedFields.map(field => (
+                                                        <TableCell key={field} className="max-w-[200px] truncate">
+                                                            {row.mapped?.[field] || "-"}
+                                                        </TableCell>
+                                                    ))}
+                                                    <TableCell className="text-right">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            {row.isDuplicate && row.duplicateId && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-7 w-7"
+                                                                    onClick={() => window.open(`/admin/companies/${row.duplicateId}`, '_blank')}
+                                                                    title="View existing company"
+                                                                >
+                                                                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                </Button>
+                                                            )}
+                                                            {(row.isDuplicate || row.mapped === null) && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-7 w-7 text-destructive hover:text-destructive"
+                                                                    onClick={() => handleRemoveRow(index)}
+                                                                    title="Remove from list"
+                                                                >
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )
+                                        })}
                                     </TableBody>
                                 </Table>
                             </div>
