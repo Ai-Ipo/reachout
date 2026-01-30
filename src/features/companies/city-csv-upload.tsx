@@ -223,11 +223,21 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
             const token = await getToken({ template: "supabase", skipCache: true })
             const supabase = createClient(token)
 
-            // Filter to valid, non-duplicate, non-removed rows
+            // Get city short_code and current company count for generating internal_ids
+            const [{ data: cityData }, { count: existingCount }] = await Promise.all([
+                supabase.from("cities").select("short_code").eq("id", cityId).single(),
+                supabase.from("companies").select("*", { count: "exact", head: true }).eq("city_id", cityId)
+            ])
+
+            const shortCode = cityData?.short_code || "UNK"
+            const startSeq = (existingCount || 0) + 1
+
+            // Filter to valid, non-duplicate, non-removed rows and generate internal_ids
             const toInsert = parsedData
                 .filter(r => r.mapped !== null && !r.isDuplicate && !r.isRemoved)
-                .map(r => ({
+                .map((r, index) => ({
                     city_id: cityId,
+                    internal_id: `${shortCode}_${String(startSeq + index).padStart(3, "0")}`,
                     name: r.mapped!.name,
                     eligibility_status: r.mapped!.eligibility_status || "pending",
                     turnover: r.mapped!.turnover || null,
@@ -240,8 +250,7 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
             let errorCount = 0
 
             if (toInsert.length > 0) {
-                // Insert one at a time to allow internal_id trigger to work correctly
-                // (The trigger uses count(*) which doesn't work with bulk inserts)
+                // Insert one at a time since internal_ids are pre-generated
                 for (const company of toInsert) {
                     const { error } = await supabase.from("companies").insert(company)
                     if (error) {
