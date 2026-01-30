@@ -55,7 +55,13 @@ create table public.directors (
   email_status text
 );
 
--- Internal ID Generator Function
+-- Sequence table for internal_id generation (handles concurrent inserts)
+create table if not exists public.city_sequences (
+  city_id uuid primary key references cities(id) on delete cascade,
+  last_seq int default 0
+);
+
+-- Internal ID Generator Function (uses sequence table with row locking)
 create or replace function generate_internal_id()
 returns trigger as $$
 declare
@@ -64,10 +70,12 @@ declare
 begin
   -- Get city short code
   select short_code into city_code from public.cities where id = new.city_id;
-  
-  -- Calculate distinct sequence for this city (naive count approach or maintained sequence)
-  -- Better: use a dedicated sequence table or count. Here using count + 1 for simplicity (beware concurrency if high volume)
-  select count(*) + 1 into city_seq from public.companies where city_id = new.city_id;
+
+  -- Get and increment sequence atomically with row lock (UPSERT)
+  insert into city_sequences (city_id, last_seq)
+  values (new.city_id, 1)
+  on conflict (city_id) do update set last_seq = city_sequences.last_seq + 1
+  returning last_seq into city_seq;
 
   new.internal_id := city_code || '_' || lpad(city_seq::text, 3, '0');
   return new;
