@@ -54,11 +54,14 @@ export function extractTableData(table: HTMLTableElement, onlySelected: boolean)
   if (headerRow) {
     const ths = headerRow.querySelectorAll('th')
     ths.forEach((th, index) => {
-      // Skip first column (checkbox)
-      if (index === 0) return
+      // Skip first column (checkbox) and second column (export button)
+      if (index === 0 || index === 1) return
       // Get inner text, trim whitespace
       const text = th.innerText.trim()
-      headers.push(text)
+      // Skip empty headers (like our export button column)
+      if (text) {
+        headers.push(text)
+      }
     })
   }
 
@@ -81,8 +84,8 @@ export function extractTableData(table: HTMLTableElement, onlySelected: boolean)
       const tds = tr.querySelectorAll('td')
 
       tds.forEach((td, index) => {
-        // Skip first column (checkbox)
-        if (index === 0) return
+        // Skip first column (checkbox) and second column (export button placeholder)
+        if (index === 0 || index === 1) return
 
         // For company name column, try to get full name from data-tooltip or anchor text
         const anchor = td.querySelector('a')

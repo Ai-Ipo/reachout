@@ -17,32 +17,42 @@ function injectExportButton() {
     return
   }
 
-  // Find the header row and first th (checkbox column)
+  // Find the header row
   const headerRow = table.querySelector('thead tr')
   if (!headerRow) {
     return
   }
 
+  // Create a new th element for the export button
+  const exportTh = document.createElement('th')
+  exportTh.id = CONTAINER_ID
+  exportTh.style.width = 'auto'
+  exportTh.style.padding = '8px'
+  exportTh.style.verticalAlign = 'middle'
+
+  // Insert as the second th (after checkbox column)
   const firstTh = headerRow.querySelector('th')
-  if (!firstTh) {
-    return
+  if (firstTh && firstTh.nextSibling) {
+    headerRow.insertBefore(exportTh, firstTh.nextSibling)
+  } else {
+    headerRow.appendChild(exportTh)
   }
 
-  // Create container for React component
-  const container = document.createElement('div')
-  container.id = CONTAINER_ID
-  container.style.display = 'inline-flex'
-  container.style.alignItems = 'center'
-  container.style.marginLeft = '8px'
-
-  // Insert after the checkbox in the first th
-  firstTh.style.display = 'flex'
-  firstTh.style.alignItems = 'center'
-  firstTh.style.gap = '8px'
-  firstTh.appendChild(container)
+  // Also add empty td to each body row to maintain column alignment
+  const bodyRows = table.querySelectorAll('tbody tr')
+  bodyRows.forEach(row => {
+    const emptyTd = document.createElement('td')
+    emptyTd.style.width = 'auto'
+    const firstTd = row.querySelector('td')
+    if (firstTd && firstTd.nextSibling) {
+      row.insertBefore(emptyTd, firstTd.nextSibling)
+    } else {
+      row.appendChild(emptyTd)
+    }
+  })
 
   // Render React component
-  const root = createRoot(container)
+  const root = createRoot(exportTh)
   root.render(<ExportButton table={table} />)
 
   console.log('[AI IPO Exporter] Export button injected')
