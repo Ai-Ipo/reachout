@@ -43,7 +43,7 @@ interface CityCSVUploadProps {
 
 interface ParsedRow {
     original: Record<string, string>
-    mapped: Record<string, string | null> | null
+    mapped: Record<string, string | number | null> | null
     isDuplicate?: boolean
     duplicateId?: string // ID of existing company if duplicate
     isRemoved?: boolean // User removed this row from import
@@ -63,6 +63,31 @@ const FIELD_LABELS: Record<DBField, string> = {
     profit: "Profit",
     borrowed_funds: "Borrowed Funds",
     loan_interest: "Loan Interest",
+}
+
+// Numeric fields for display formatting
+const NUMERIC_DISPLAY_FIELDS = ["turnover", "profit", "borrowed_funds", "loan_interest"]
+
+// Format value for display in preview table
+function formatDisplayValue(value: string | number | null | undefined, field: string): string {
+    if (value === null || value === undefined) return "-"
+    if (typeof value === "number") {
+        // Format large numbers in Indian style (lakhs/crores) for readability
+        if (NUMERIC_DISPLAY_FIELDS.includes(field)) {
+            const absValue = Math.abs(value)
+            const sign = value < 0 ? "-" : ""
+            if (absValue >= 10000000) {
+                return `${sign}${(absValue / 10000000).toFixed(2)} Cr`
+            } else if (absValue >= 100000) {
+                return `${sign}${(absValue / 100000).toFixed(2)} L`
+            } else if (absValue >= 1000) {
+                return `${sign}${(absValue / 1000).toFixed(2)} K`
+            }
+            return value.toLocaleString("en-IN")
+        }
+        return value.toString()
+    }
+    return String(value)
 }
 
 export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess }: CityCSVUploadProps) {
@@ -396,7 +421,7 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                                                     </TableCell>
                                                     {mappedFields.map(field => (
                                                         <TableCell key={field} className="max-w-[200px] truncate">
-                                                            {row.mapped?.[field] || "-"}
+                                                            {formatDisplayValue(row.mapped?.[field], field)}
                                                         </TableCell>
                                                     ))}
                                                     <TableCell className="text-right">

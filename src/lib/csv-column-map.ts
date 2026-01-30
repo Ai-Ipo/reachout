@@ -51,6 +51,50 @@ export type DBField = typeof DB_FIELDS[number]
 // Valid eligibility values
 export const VALID_ELIGIBILITY = ["eligible", "ineligible", "pending"] as const
 
+// Numeric fields that need Indian currency parsing
+const NUMERIC_FIELDS = ["turnover", "profit", "borrowed_funds", "loan_interest"]
+
+/**
+ * Parse Indian currency format to number
+ * Handles formats like: "24.0 lac", "63.7 cr", "0.0 k", "-62.1 lac"
+ * - lac/lakh = 100,000 (1 lakh)
+ * - cr/crore = 10,000,000 (1 crore)
+ * - k = 1,000 (thousand)
+ * Returns null if parsing fails
+ */
+export function parseIndianCurrency(value: string): number | null {
+  if (!value || !value.trim()) return null
+
+  const trimmed = value.trim().toLowerCase()
+
+  // Try to extract number and suffix
+  const match = trimmed.match(/^(-?[\d.,]+)\s*(lac|lakh|cr|crore|k)?$/i)
+  if (!match) {
+    // Try parsing as plain number
+    const plain = parseFloat(trimmed.replace(/,/g, ""))
+    return isNaN(plain) ? null : plain
+  }
+
+  const numStr = match[1].replace(/,/g, "")
+  const num = parseFloat(numStr)
+  if (isNaN(num)) return null
+
+  const suffix = match[2]?.toLowerCase()
+
+  switch (suffix) {
+    case "lac":
+    case "lakh":
+      return num * 100000 // 1 lakh = 100,000
+    case "cr":
+    case "crore":
+      return num * 10000000 // 1 crore = 10,000,000
+    case "k":
+      return num * 1000 // 1k = 1,000
+    default:
+      return num // No suffix, return as is
+  }
+}
+
 /**
  * Parse a CSV row into our database format
  * Returns null if company name is missing
@@ -58,8 +102,8 @@ export const VALID_ELIGIBILITY = ["eligible", "ineligible", "pending"] as const
 export function mapRowToCompany(
   row: Record<string, string>,
   columnMapping: Record<string, string>
-): Record<string, string | null> | null {
-  const result: Record<string, string | null> = {
+): Record<string, string | number | null> | null {
+  const result: Record<string, string | number | null> = {
     name: null,
     eligibility_status: "pending", // default
     turnover: null,
@@ -78,6 +122,9 @@ export function mapRowToCompany(
         if (VALID_ELIGIBILITY.includes(normalized as any)) {
           result[dbField] = normalized
         }
+      } else if (NUMERIC_FIELDS.includes(dbField)) {
+        // Parse Indian currency format for numeric fields
+        result[dbField] = parseIndianCurrency(value)
       } else {
         result[dbField] = value.trim()
       }
