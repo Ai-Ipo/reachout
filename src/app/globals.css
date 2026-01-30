@@ -142,7 +142,7 @@
   --card-foreground: oklch(0.15 0.02 270);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.15 0.02 270);
-  --primary: oklch(0.47 0.2773 275.66 / 0.76);
+  --primary: oklch(66.343% 0.17189 254.308);
   --primary-foreground: oklch(0.98 0 0);
   --secondary: oklch(0.985 0.00132 106deg);
   --secondary-foreground: oklch(0.25 0.02 270);
@@ -191,7 +191,7 @@
   --card-foreground: oklch(0.9491 0 0);
   --popover: oklch(0.2134 0 0);
   --popover-foreground: oklch(0.9491 0 0);
-  --primary: oklch(0.9247 0.0524 66.1732);
+  --primary: oklch(60.342% 0.17194 251.19);
   --primary-foreground: oklch(0.2029 0.0240 200.1962);
   --secondary: oklch(0.3163 0.0190 63.6992);
   --secondary-foreground: oklch(0.9247 0.0524 66.1732);
@@ -616,6 +616,25 @@
   }
 }
 
+@theme inline {
+  --animate-cell-ripple: cell-ripple var(--duration, 200ms) ease-out none 1 var(--delay, 0ms);
+
+  @keyframes cell-ripple {
+    0% {
+      opacity: 0.4;
+    }
+
+    50% {
+      opacity: 0.8;
+    }
+
+    100% {
+      opacity: 0.4;
+    }
+  }
+}
+
+
 .cl-modalContent {
   @apply w-[400px];
 }
@@ -626,6 +645,18 @@
 
 .cl-footer {
   @apply hidden;
+}
+
+.cl-signIn-start, .cl-signUp-start {
+  @apply shadow-none border-none bg-transparent z-[100];
+}
+
+.cl-headerTitle {
+  /* @apply */
+}
+
+.cl-socialButtonsBlockButton {
+  @apply bg-background border border-input text-foreground ;
 }
 
 /* Removed problematic global Clerk overrides */
