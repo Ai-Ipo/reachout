@@ -431,6 +431,13 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                                     </TableBody>
                                 </Table>
                             </div>
+
+                            {/* Info message when no eligibility column detected */}
+                            {!mappedFields.includes("eligibility_status") && (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                    No eligibility column detected. All companies will be marked as "pending".
+                                </p>
+                            )}
                         </>
                     )}
 
