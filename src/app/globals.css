@@ -616,6 +616,25 @@
   }
 }
 
+@theme inline {
+  --animate-cell-ripple: cell-ripple var(--duration, 200ms) ease-out none 1 var(--delay, 0ms);
+
+  @keyframes cell-ripple {
+    0% {
+      opacity: 0.4;
+    }
+
+    50% {
+      opacity: 0.8;
+    }
+
+    100% {
+      opacity: 0.4;
+    }
+  }
+}
+
+
 .cl-modalContent {
   @apply w-[400px];
 }
@@ -626,6 +645,18 @@
 
 .cl-footer {
   @apply hidden;
+}
+
+.cl-signIn-start, .cl-signUp-start {
+  @apply shadow-none border-none bg-transparent z-[100];
+}
+
+.cl-headerTitle {
+  /* @apply */
+}
+
+.cl-socialButtonsBlockButton {
+  @apply bg-background border border-input text-foreground ;
 }
 
 /* Removed problematic global Clerk overrides */
