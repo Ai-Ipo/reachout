@@ -193,7 +193,7 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                     // Mark duplicates and store the existing company ID
                     for (const row of mapped) {
                         if (row.mapped?.name) {
-                            const normalizedName = row.mapped.name.toLowerCase().trim()
+                            const normalizedName = String(row.mapped.name).toLowerCase().trim()
                             const existingId = existingNameMap.get(normalizedName)
                             if (existingId) {
                                 row.isDuplicate = true
