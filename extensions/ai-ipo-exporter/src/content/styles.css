@@ -104,6 +104,11 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  color: #ffffff;
+}
+
+.aiipo-export-btn-content span {
+  color: #ffffff;
 }
 
 /* Spinner animation */
@@ -123,4 +128,6 @@
 /* Icon styling */
 .aiipo-export-btn svg {
   flex-shrink: 0;
+  color: #ffffff;
+  stroke: #ffffff;
 }
