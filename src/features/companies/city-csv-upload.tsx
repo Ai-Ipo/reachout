@@ -294,7 +294,7 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="max-w-[90vw] w-full max-h-[90vh] h-full flex flex-col">
+            <DialogContent className="min-w-[90vw] w-full max-h-[90vh] h-full flex flex-col">
                 <DialogHeader className="flex-shrink-0">
                     <div className="flex items-center justify-between">
                         <div>
