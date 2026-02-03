@@ -62,11 +62,15 @@ declare
   city_code text;
   city_seq int;
 begin
+  -- Skip if internal_id is already provided (allows client-side generation for bulk imports)
+  if new.internal_id is not null then
+    return new;
+  end if;
+
   -- Get city short code
   select short_code into city_code from public.cities where id = new.city_id;
-  
-  -- Calculate distinct sequence for this city (naive count approach or maintained sequence)
-  -- Better: use a dedicated sequence table or count. Here using count + 1 for simplicity (beware concurrency if high volume)
+
+  -- Count existing companies in this city
   select count(*) + 1 into city_seq from public.companies where city_id = new.city_id;
 
   new.internal_id := city_code || '_' || lpad(city_seq::text, 3, '0');

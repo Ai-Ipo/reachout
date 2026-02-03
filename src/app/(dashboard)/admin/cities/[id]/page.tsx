@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client"
 import { CompanyDataTable, Company } from "@/features/companies/company-data-table"
 import { EditCompanyPanel } from "@/features/companies/edit-company-panel"
 import { AddCompanyDialog } from "@/features/companies/add-company-dialog"
+import { CityCSVUpload } from "@/features/companies/city-csv-upload"
 import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
@@ -15,7 +16,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ArrowLeft, MoreVertical, Trash2 } from "lucide-react"
+import { ArrowLeft, MoreVertical, Trash2, Upload } from "lucide-react"
 import Link from "next/link"
 
 import { Skeleton } from "@/components/ui/skeleton"
@@ -32,6 +33,7 @@ export default function CityDetailPage() {
     const { setOpen } = useSidebar()
     const cityId = params?.id as string
     const [addDialogOpen, setAddDialogOpen] = useState(false)
+    const [importDialogOpen, setImportDialogOpen] = useState(false)
     const [editingCompany, setEditingCompany] = useState<Company | null>(null)
     const [refreshKey, setRefreshKey] = useState(0)
     const router = useRouter()
@@ -154,23 +156,31 @@ export default function CityDetailPage() {
                         </div>
                     </div>
 
-                    {/* 3-dot menu */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                                <MoreVertical className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={handleDelete}
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete City
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center gap-2">
+                        {/* Import CSV Button */}
+                        <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Import CSV
+                        </Button>
+
+                        {/* 3-dot menu */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={handleDelete}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete City
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
 
                 {/* Company Table Area */}
@@ -195,6 +205,15 @@ export default function CityDetailPage() {
                     open={addDialogOpen}
                     onOpenChange={setAddDialogOpen}
                     cityId={cityId}
+                    onSuccess={handleCompanyAdded}
+                />
+
+                {/* Import CSV Dialog */}
+                <CityCSVUpload
+                    open={importDialogOpen}
+                    onOpenChange={setImportDialogOpen}
+                    cityId={cityId}
+                    cityName={city.name}
                     onSuccess={handleCompanyAdded}
                 />
             </div>
