@@ -104,7 +104,7 @@ interface CompanyDataTableProps {
     eligibilityStatus?: "pending" | "eligible" | "ineligible" // Filter by eligibility
     callingStatusIn?: string[] // Filter by calling_status IN these values
     onAddCompany?: () => void
-    refreshKey?: number
+    onMutateReady?: (mutate: () => void) => void // Callback to expose mutate function to parent
     onEditCompany?: (company: Company | null) => void
     hideAssignColumn?: boolean // Hide the assign column when viewing a specific telemarketer
     hideAddButton?: boolean // Hide the add button in footer
@@ -130,7 +130,7 @@ const TruncatedTooltipCell = ({ value, className }: { value: string | null | und
     )
 }
 
-export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callingStatusIn, onAddCompany, refreshKey, onEditCompany, hideAssignColumn, hideAddButton, showCityColumn, externalUpdate, companyLinkBase = "/admin/companies" }: CompanyDataTableProps) {
+export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, eligibilityStatus, callingStatusIn, onAddCompany, onMutateReady, onEditCompany, hideAssignColumn, hideAddButton, showCityColumn, externalUpdate, companyLinkBase = "/admin/companies" }: CompanyDataTableProps) {
     const [sorting, setSorting] = useState<SortingState>([])
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -223,7 +223,7 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
     const callingStatusKey = callingStatusIn?.length ? callingStatusIn.join(',') : ''
     const hasFilters = cityId || assignedTo || eligibilityStatus || (callingStatusIn && callingStatusIn.length > 0) || showCityColumn
     const swrKey = hasFilters
-        ? `companies-${cityId || 'all'}-${assignedTo || 'any'}-${eligibilityStatus || 'any'}-${callingStatusKey}-${refreshKey}-${internalRefreshKey}`
+        ? `companies-${cityId || 'all'}-${assignedTo || 'any'}-${eligibilityStatus || 'any'}-${callingStatusKey}-${internalRefreshKey}`
         : null
 
     const { data, isLoading, mutate } = useSWR<CompaniesData>(
@@ -247,6 +247,11 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
         dataRef.current = data
         mutateRef.current = mutate
     }, [data, mutate])
+
+    // Expose mutate function to parent for external refresh triggers
+    useEffect(() => {
+        onMutateReady?.(() => mutate())
+    }, [onMutateReady, mutate])
 
     // Optimistic update helper - stable callback using refs
     const updateCompanyField = useCallback((companyId: string, field: keyof Company, value: unknown) => {

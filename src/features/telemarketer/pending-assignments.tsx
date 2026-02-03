@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import useSWR from "swr"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@clerk/nextjs"
@@ -29,14 +29,22 @@ interface City {
 
 interface PendingAssignmentsProps {
     onEditCompany: (company: Company | null) => void
-    refreshKey: number
+    onMutateReady?: (mutate: () => void) => void
 }
 
 // Admin view - shows all pending eligibility companies
-export function PendingAssignments({ onEditCompany, refreshKey }: PendingAssignmentsProps) {
+export function PendingAssignments({ onEditCompany, onMutateReady }: PendingAssignmentsProps) {
     const [selectedCity, setSelectedCity] = useState<string>("all")
+    const tableRefreshRef = useRef<(() => void) | null>(null)
     const { getToken } = useAuth()
     const { profile } = useProfile()
+
+    // Expose table's mutate to parent
+    useEffect(() => {
+        if (tableRefreshRef.current && onMutateReady) {
+            onMutateReady(tableRefreshRef.current)
+        }
+    }, [onMutateReady])
 
     const fetchCities = useCallback(async () => {
         const token = await getToken({ template: "supabase", skipCache: true })
@@ -74,7 +82,7 @@ export function PendingAssignments({ onEditCompany, refreshKey }: PendingAssignm
     }, [getToken])
 
     const { data: cities = [], isLoading } = useSWR(
-        profile ? ['pending-cities', refreshKey] : null,
+        profile ? ['pending-cities'] : null,
         fetchCities,
         {
             revalidateOnFocus: false,
@@ -140,8 +148,7 @@ export function PendingAssignments({ onEditCompany, refreshKey }: PendingAssignm
                 onEditCompany={onEditCompany}
                 hideAddButton
                 showCityColumn={selectedCity === "all"}
-                refreshKey={refreshKey}
-                externalUpdate={null} // PendingAssignments manages state via parents refreshKey for now
+                onMutateReady={(refresh) => { tableRefreshRef.current = refresh }}
             />
         </>
     )
@@ -195,15 +202,27 @@ const CitySelector = ({
 
 interface TelemarketerAssignmentsProps {
     onEditCompany: (company: Company | null) => void
-    refreshKey: number
+    onMutateReady?: (mutate: () => void) => void
 }
 
 // Telemarketer view with tabs for Pending and Completed
-export function TelemarketerAssignments({ onEditCompany, refreshKey }: TelemarketerAssignmentsProps) {
+export function TelemarketerAssignments({ onEditCompany, onMutateReady }: TelemarketerAssignmentsProps) {
     const [selectedPendingCity, setSelectedPendingCity] = useState<string>("all")
     const [selectedCompletedCity, setSelectedCompletedCity] = useState<string>("all")
+    const pendingTableRefreshRef = useRef<(() => void) | null>(null)
+    const completedTableRefreshRef = useRef<(() => void) | null>(null)
     const { getToken } = useAuth()
     const { profile } = useProfile()
+
+    // Expose a combined refresh function to parent
+    useEffect(() => {
+        if (onMutateReady) {
+            onMutateReady(() => {
+                pendingTableRefreshRef.current?.()
+                completedTableRefreshRef.current?.()
+            })
+        }
+    }, [onMutateReady])
 
     const fetchAssignmentData = useCallback(async () => {
         const token = await getToken({ template: "supabase", skipCache: true })
@@ -292,7 +311,7 @@ export function TelemarketerAssignments({ onEditCompany, refreshKey }: Telemarke
 
 
     const { data, isLoading } = useSWR(
-        profile ? ['telemarketer-assignments', refreshKey] : null,
+        profile ? ['telemarketer-assignments'] : null,
         fetchAssignmentData,
         {
             revalidateOnFocus: false,
@@ -344,7 +363,7 @@ export function TelemarketerAssignments({ onEditCompany, refreshKey }: Telemarke
                             hideAssignColumn
                             hideAddButton
                             showCityColumn={selectedPendingCity === "all"}
-                            refreshKey={refreshKey}
+                            onMutateReady={(refresh) => { pendingTableRefreshRef.current = refresh }}
                             companyLinkBase="/telemarketer/companies"
                         />
                     </>
@@ -370,7 +389,7 @@ export function TelemarketerAssignments({ onEditCompany, refreshKey }: Telemarke
                             hideAssignColumn
                             hideAddButton
                             showCityColumn={selectedCompletedCity === "all"}
-                            refreshKey={refreshKey}
+                            onMutateReady={(refresh) => { completedTableRefreshRef.current = refresh }}
                             companyLinkBase="/telemarketer/companies"
                         />
                     </>

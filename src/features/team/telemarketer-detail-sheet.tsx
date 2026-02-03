@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import {
     Sheet,
     SheetContent,
@@ -22,7 +22,7 @@ interface TelemarketerDetailSheetProps {
 
 export function TelemarketerDetailSheet({ telemarketer, open, onOpenChange }: TelemarketerDetailSheetProps) {
     const [editingCompany, setEditingCompany] = useState<Company | null>(null)
-    const [refreshKey, setRefreshKey] = useState(0)
+    const tableRefreshRef = useRef<(() => void) | null>(null)
 
     if (!telemarketer) return null
 
@@ -75,7 +75,7 @@ export function TelemarketerDetailSheet({ telemarketer, open, onOpenChange }: Te
                     })}>
                         <CompanyDataTable
                             assignedTo={telemarketer.id}
-                            refreshKey={refreshKey}
+                            onMutateReady={(refresh) => { tableRefreshRef.current = refresh }}
                             onEditCompany={setEditingCompany}
                             hideAssignColumn
                         />
@@ -92,10 +92,10 @@ export function TelemarketerDetailSheet({ telemarketer, open, onOpenChange }: Te
                                         // Update local state to reflect changes immediately
                                         setEditingCompany(updatedCompany)
                                         // Also trigger list refresh
-                                        setRefreshKey(prev => prev + 1)
+                                        tableRefreshRef.current?.()
                                     } else {
                                         setEditingCompany(null)
-                                        setRefreshKey(prev => prev + 1)
+                                        tableRefreshRef.current?.()
                                     }
                                 }}
                             />

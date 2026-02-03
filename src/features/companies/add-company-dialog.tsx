@@ -109,6 +109,36 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
             const token = await getToken({ template: "supabase", skipCache: true })
             const supabase = createClient(token)
 
+            // Check for duplicate company name in the same city (case-insensitive, normalized)
+            const normalizedName = data.name.toLowerCase().trim().replace(/\s+/g, ' ')
+            const { data: existingCompanies } = await supabase
+                .from("companies")
+                .select("id, name, internal_id")
+                .eq("city_id", data.city_id)
+
+            const duplicate = existingCompanies?.find(c =>
+                c.name?.toLowerCase().trim().replace(/\s+/g, ' ') === normalizedName
+            )
+
+            if (duplicate) {
+                toast.error(
+                    <div className="flex flex-col gap-1">
+                        <span>A company with this name already exists</span>
+                        <a
+                            href={`/admin/companies/${duplicate.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary underline hover:text-primary/80"
+                        >
+                            View {duplicate.internal_id}: {duplicate.name}
+                        </a>
+                    </div>,
+                    { duration: 6000 }
+                )
+                setSaving(false)
+                return
+            }
+
             // Insert company
             const { data: company, error: companyError } = await supabase
                 .from("companies")

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { PendingAssignments, TelemarketerAssignments } from "@/features/telemarketer/pending-assignments"
 import { EditCompanyPanel } from "@/features/companies/edit-company-panel"
 import type { Company } from "@/features/companies/company-data-table"
@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils"
 export default function TelemarketerStartPage() {
     const { isAdmin } = useProfile()
     const [editingCompany, setEditingCompany] = useState<Company | null>(null)
-    const [refreshKey, setRefreshKey] = useState(0)
+    const tableRefreshRef = useRef<(() => void) | null>(null)
 
     return (
         <div className="flex flex-row h-full">
@@ -33,12 +33,12 @@ export default function TelemarketerStartPage() {
                 {isAdmin ? (
                     <PendingAssignments
                         onEditCompany={setEditingCompany}
-                        refreshKey={refreshKey}
+                        onMutateReady={(refresh) => { tableRefreshRef.current = refresh }}
                     />
                 ) : (
                     <TelemarketerAssignments
                         onEditCompany={setEditingCompany}
-                        refreshKey={refreshKey}
+                        onMutateReady={(refresh) => { tableRefreshRef.current = refresh }}
                     />
                 )}
             </div>
@@ -50,7 +50,7 @@ export default function TelemarketerStartPage() {
                         onClose={() => setEditingCompany(null)}
                         onSuccess={() => {
                             setEditingCompany(null)
-                            setRefreshKey(prev => prev + 1)
+                            tableRefreshRef.current?.()
                         }}
                     />
                 </div>

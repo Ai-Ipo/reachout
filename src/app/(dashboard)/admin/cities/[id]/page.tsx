@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 import useSWR from "swr"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
@@ -35,7 +35,7 @@ export default function CityDetailPage() {
     const [addDialogOpen, setAddDialogOpen] = useState(false)
     const [importDialogOpen, setImportDialogOpen] = useState(false)
     const [editingCompany, setEditingCompany] = useState<Company | null>(null)
-    const [refreshKey, setRefreshKey] = useState(0)
+    const tableRefreshRef = useRef<(() => void) | null>(null)
     const router = useRouter()
     const { getToken } = useAuth()
 
@@ -58,8 +58,8 @@ export default function CityDetailPage() {
         return { city: data, companyCount: count || 0 }
     }, [cityId, getToken])
 
-    const { data, isLoading, mutate } = useSWR<CityData>(
-        cityId ? ['city-detail', cityId, refreshKey] : null,
+    const { data, isLoading, mutate: mutateCityData } = useSWR<CityData>(
+        cityId ? ['city-detail', cityId] : null,
         fetchCity,
         {
             revalidateOnFocus: false,
@@ -89,8 +89,8 @@ export default function CityDetailPage() {
     const [externalUpdate, setExternalUpdate] = useState<Company | null>(null)
 
     function handleCompanyAdded() {
-        setRefreshKey(k => k + 1)
-        mutate() // Update count
+        mutateCityData() // Refresh city count
+        tableRefreshRef.current?.() // Refresh table data
     }
 
     if (isLoading || !city) return (
@@ -187,8 +187,8 @@ export default function CityDetailPage() {
                 <div className="flex relative h-[calc(100vh-200px)]">
                     <div className={`flex-1 min-w-0 transition-all duration-300 ${editingCompany ? 'pr-0' : ''}`}>
                         <CompanyDataTable
-                            key={refreshKey}
                             cityId={cityId}
+                            onMutateReady={(refresh) => { tableRefreshRef.current = refresh }}
                             onAddCompany={() => setAddDialogOpen(true)}
                             onEditCompany={setEditingCompany}
                             externalUpdate={externalUpdate}
@@ -230,7 +230,7 @@ export default function CityDetailPage() {
                                 setEditingCompany(updatedCompany)
                             } else {
                                 // Fallback for errors or non-returning updates
-                                setRefreshKey(k => k + 1)
+                                tableRefreshRef.current?.()
                             }
                         }}
                     />
