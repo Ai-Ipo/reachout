@@ -80,12 +80,21 @@ export function CsvUpload() {
                     }
 
                     if (toInsert.length > 0) {
-                        // Batch insert
-                        const { error } = await supabase.from('companies').insert(toInsert)
-                        if (error) throw error
+                        // Insert one at a time - trigger will generate internal_id atomically
+                        let successCount = 0
+                        for (const company of toInsert) {
+                            const { error } = await supabase.from('companies').insert(company)
+                            if (error) {
+                                console.error("Insert error:", error)
+                                errorCount++
+                            } else {
+                                successCount++
+                            }
+                        }
+                        setResult({ success: successCount, errors: errorCount })
+                    } else {
+                        setResult({ success: 0, errors: errorCount })
                     }
-
-                    setResult({ success: toInsert.length, errors: errorCount })
                 } catch (err) {
                     console.error("Upload error:", err)
                     setResult({ success: 0, errors: rows.length }) // Treat all as failed if batch fails

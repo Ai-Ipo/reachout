@@ -357,7 +357,7 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                             <div className="h-px bg-border/40" />
 
                             {/* Financials */}
-                            <Section title="Financials" description="Key financial metrics">
+                            <Section title="Financials" description="Key financial metrics (enter raw amounts in rupees)">
                                 <FormField
                                     control={form.control}
                                     name="turnover"
@@ -373,9 +373,8 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                                         min="0"
                                                         placeholder="0.00"
                                                         {...field}
-                                                        className="h-9 pl-6 pr-8 border-border text-sm tabular-nums"
+                                                        className="h-9 pl-6 border-border text-sm tabular-nums"
                                                     />
-                                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground/50 font-medium">Cr</span>
                                                 </div>
                                             </FormControl>
                                             <FormMessage className="text-[11px]" />
@@ -396,9 +395,8 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                                         step="0.01"
                                                         placeholder="0.00"
                                                         {...field}
-                                                        className="h-9 pl-6 pr-8 border-border text-sm tabular-nums"
+                                                        className="h-9 pl-6 border-border text-sm tabular-nums"
                                                     />
-                                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground/60 font-medium">Cr</span>
                                                 </div>
                                             </FormControl>
                                             <FormMessage className="text-[11px]" />
@@ -420,9 +418,8 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                                         min="0"
                                                         placeholder="0.00"
                                                         {...field}
-                                                        className="h-9 pl-6 pr-8 border-border text-sm tabular-nums"
+                                                        className="h-9 pl-6 border-border text-sm tabular-nums"
                                                     />
-                                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground/50 font-medium">Cr</span>
                                                 </div>
                                             </FormControl>
                                             <FormMessage className="text-[11px]" />

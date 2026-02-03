@@ -23,12 +23,17 @@ create table public.profiles (
   created_at timestamptz default now()
 );
 
--- 3. Companies
+-- 3. City Sequences (tracks next internal_id per city - never decreases)
+create table public.city_sequences (
+  city_id uuid primary key references public.cities(id) on delete cascade,
+  next_seq integer not null default 1
+);
+
+-- 4. Companies
 create table public.companies (
   id uuid primary key default uuid_generate_v4(),
   internal_id text unique,
   city_id uuid not null references public.cities(id),
-  result_index serial, -- Auto-increment per table, but logic will handle per city if needed, simplistic approach: global serial or per-city sequence function
   name text not null,
   financial_year text,
   turnover numeric,
@@ -44,7 +49,7 @@ create table public.companies (
   updated_at timestamptz default now()
 );
 
--- 4. Directors
+-- 5. Directors
 create table public.directors (
   id uuid primary key default uuid_generate_v4(),
   company_id uuid not null references public.companies(id) on delete cascade,
@@ -55,25 +60,41 @@ create table public.directors (
   email_status text
 );
 
--- Internal ID Generator Function
+-- Function to atomically get next internal_id for a city
+create or replace function get_next_internal_id(p_city_id uuid)
+returns text as $$
+declare
+  v_short_code text;
+  v_seq integer;
+begin
+  -- Get city short code
+  select short_code into v_short_code from public.cities where id = p_city_id;
+  if v_short_code is null then
+    raise exception 'City not found: %', p_city_id;
+  end if;
+
+  -- Atomically get and increment the sequence (handles concurrent inserts)
+  insert into public.city_sequences (city_id, next_seq)
+  values (p_city_id, 2)
+  on conflict (city_id) do update
+  set next_seq = city_sequences.next_seq + 1
+  returning next_seq - 1 into v_seq;
+
+  return v_short_code || '_' || lpad(v_seq::text, 3, '0');
+end;
+$$ language plpgsql;
+
+-- Internal ID Generator Trigger
 create or replace function generate_internal_id()
 returns trigger as $$
-declare
-  city_code text;
-  city_seq int;
 begin
-  -- Skip if internal_id is already provided (allows client-side generation for bulk imports)
+  -- Skip if internal_id is already provided
   if new.internal_id is not null then
     return new;
   end if;
 
-  -- Get city short code
-  select short_code into city_code from public.cities where id = new.city_id;
-
-  -- Count existing companies in this city
-  select count(*) + 1 into city_seq from public.companies where city_id = new.city_id;
-
-  new.internal_id := city_code || '_' || lpad(city_seq::text, 3, '0');
+  -- Use the atomic sequence function
+  new.internal_id := get_next_internal_id(new.city_id);
   return new;
 end;
 $$ language plpgsql;
@@ -101,8 +122,13 @@ for each row execute procedure public.handle_new_user();
 -- RLS Policies
 alter table public.profiles enable row level security;
 alter table public.cities enable row level security;
+alter table public.city_sequences enable row level security;
 alter table public.companies enable row level security;
 alter table public.directors enable row level security;
+
+-- City Sequences (needed for internal_id generation):
+create policy "Allow sequence access for authenticated users" on public.city_sequences
+for all using (true) with check (true);
 
 -- Profiles: 
 create policy "Public profiles are viewable by everyone" on public.profiles for select using (true);

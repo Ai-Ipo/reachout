@@ -492,7 +492,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                                         name="turnover"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-xs text-muted-foreground">Turnover (Cr)</FormLabel>
+                                                <FormLabel className="text-xs text-muted-foreground">Turnover</FormLabel>
                                                 <FormControl>
                                                     <div className="relative">
                                                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/60">₹</span>
@@ -508,7 +508,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                                         name="profit"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-xs text-muted-foreground">Profit (Cr)</FormLabel>
+                                                <FormLabel className="text-xs text-muted-foreground">Profit</FormLabel>
                                                 <FormControl>
                                                     <div className="relative">
                                                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/60">₹</span>
@@ -524,7 +524,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                                         name="borrowed_funds"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-xs text-muted-foreground">Borrowed Funds (Cr)</FormLabel>
+                                                <FormLabel className="text-xs text-muted-foreground">Borrowed Funds</FormLabel>
                                                 <FormControl>
                                                     <div className="relative">
                                                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/60">₹</span>
