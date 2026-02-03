@@ -42,7 +42,14 @@ import { QuickWhatsappSelect } from "./quick-whatsapp-select"
 import { QuickBoardSelect } from "./quick-board-select"
 import { QuickAssignSelect } from "./quick-assign-select"
 import { formatCurrency, formatPercent, formatFinancialYear } from "@/lib/format"
-import { ArrowUpDown, Plus, Type, Hash, Building2, Users, Mail, Phone, Settings2, ExternalLink, MapPin } from "lucide-react"
+import { ArrowUpDown, Plus, Type, Hash, Building2, Users, Mail, Phone, Settings2, ExternalLink, MapPin, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { BulkActionBar, BulkAssignDialog, BulkDeleteDialog } from "./bulk-actions"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -739,94 +746,94 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
 
     return (
         <div className="flex relative h-full">
-            <div className="flex-1 min-w-0">
-                <div className="space-y-0">
-                    {/* Top Toolbar - Clean & Notion-like */}
-                    <CompanyTableToolbar
-                        table={table}
-                        totalCount={totalCount}
-                        onAddCompany={onAddCompany}
-                    />
+            <div className="flex-1 min-w-0 flex flex-col">
+                {/* Top Toolbar - Clean & Notion-like */}
+                <CompanyTableToolbar
+                    table={table}
+                    totalCount={totalCount}
+                    onAddCompany={onAddCompany}
+                />
 
-                    {/* Table - Notion style */}
-                    <div className="border border-border overflow-x-auto rounded-sm bg-background max-w-[calc(100vw-16rem)]">
-                        <table
-                            className="text-sm border-collapse table-fixed"
-                            style={{ width: table.getTotalSize() }}
-                        >
-                            <thead>
-                                {table.getHeaderGroups().map((headerGroup) => (
-                                    <tr key={headerGroup.id} className="border-b border-border bg-muted/50">
-                                        {headerGroup.headers.map((header) => (
-                                            <th
-                                                key={header.id}
-                                                style={{ width: header.getSize() }}
-                                                className="h-9 px-2 text-left text-[13px] font-normal text-muted-foreground border-r border-border last:border-r-0 select-none relative group"
-                                            >
-                                                {header.isPlaceholder
-                                                    ? null
-                                                    : flexRender(
-                                                        header.column.columnDef.header,
-                                                        header.getContext()
-                                                    )}
-                                                {header.column.getCanResize() && (
-                                                    <div
-                                                        onMouseDown={header.getResizeHandler()}
-                                                        onTouchStart={header.getResizeHandler()}
-                                                        className={cn(
-                                                            "absolute right-0 top-0 h-full w-1 bg-border/50 cursor-col-resize touch-none select-none opacity-0 group-hover:opacity-100 transition-opacity",
-                                                            header.column.getIsResizing() && "bg-primary opacity-100 w-1.5"
-                                                        )}
-                                                    />
+                {/* Table Container - scrollable */}
+                <div className="flex-1 min-h-0 border border-border rounded-sm bg-background overflow-auto max-w-[calc(100vw-16rem)]">
+                    <table
+                        className="text-sm border-collapse table-fixed"
+                        style={{ width: table.getTotalSize() }}
+                    >
+                        <thead className="sticky top-0 z-10">
+                            {table.getHeaderGroups().map((headerGroup) => (
+                                <tr key={headerGroup.id} className="border-b border-border bg-muted/50">
+                                    {headerGroup.headers.map((header) => (
+                                        <th
+                                            key={header.id}
+                                            style={{ width: header.getSize() }}
+                                            className="h-9 px-2 text-left text-[13px] font-normal text-muted-foreground border-r border-border last:border-r-0 select-none relative group bg-muted/50"
+                                        >
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(
+                                                    header.column.columnDef.header,
+                                                    header.getContext()
                                                 )}
-                                            </th>
+                                            {header.column.getCanResize() && (
+                                                <div
+                                                    onMouseDown={header.getResizeHandler()}
+                                                    onTouchStart={header.getResizeHandler()}
+                                                    className={cn(
+                                                        "absolute right-0 top-0 h-full w-1 bg-border/50 cursor-col-resize touch-none select-none opacity-0 group-hover:opacity-100 transition-opacity",
+                                                        header.column.getIsResizing() && "bg-primary opacity-100 w-1.5"
+                                                    )}
+                                                />
+                                            )}
+                                        </th>
+                                    ))}
+                                </tr>
+                            ))}
+                        </thead>
+                        <tbody>
+                            {table.getRowModel().rows?.length ? (
+                                table.getRowModel().rows.map((row) => (
+                                    <tr
+                                        key={row.id}
+                                        data-state={row.getIsSelected() && "selected"}
+                                        onClick={(e) => handleRowClick(row.original, e)}
+                                        className={cn(
+                                            "group border-b border-border/50 hover:bg-muted/50 transition-colors cursor-pointer",
+                                            "data-[state=selected]:bg-primary/10"
+                                        )}
+                                    >
+                                        {row.getVisibleCells().map((cell) => (
+                                            <td
+                                                key={cell.id}
+                                                style={{ width: cell.column.getSize() }}
+                                                className="h-9 px-2 border-r border-border/50 last:border-r-0 text-[13px] text-foreground data-[state=selected]:border-primary/20 overflow-hidden"
+                                            >
+                                                {flexRender(
+                                                    cell.column.columnDef.cell,
+                                                    cell.getContext()
+                                                )}
+                                            </td>
                                         ))}
                                     </tr>
-                                ))}
-                            </thead>
-                            <tbody>
-                                {table.getRowModel().rows?.length ? (
-                                    table.getRowModel().rows.map((row) => (
-                                        <tr
-                                            key={row.id}
-                                            data-state={row.getIsSelected() && "selected"}
-                                            onClick={(e) => handleRowClick(row.original, e)}
-                                            className={cn(
-                                                "group border-b border-border/50 hover:bg-muted/50 transition-colors cursor-pointer",
-                                                "data-[state=selected]:bg-primary/10"
-                                            )}
-                                        >
-                                            {row.getVisibleCells().map((cell) => (
-                                                <td
-                                                    key={cell.id}
-                                                    style={{ width: cell.column.getSize() }}
-                                                    className="h-9 px-2 border-r border-border/50 last:border-r-0 text-[13px] text-foreground data-[state=selected]:border-primary/20 overflow-hidden"
-                                                >
-                                                    {flexRender(
-                                                        cell.column.columnDef.cell,
-                                                        cell.getContext()
-                                                    )}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td
-                                            colSpan={columns.length}
-                                            className="h-24 text-center text-muted-foreground text-sm"
-                                        >
-                                            No companies found.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td
+                                        colSpan={columns.length}
+                                        className="h-24 text-center text-muted-foreground text-sm"
+                                    >
+                                        No companies found.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
 
-                    {/* Notion-like Footer */}
-                    {!hideAddButton && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground pl-1 mt-2">
+                {/* Footer with Pagination */}
+                <div className="flex items-center justify-between py-2 px-1 flex-shrink-0">
+                    <div className="flex items-center gap-2">
+                        {!hideAddButton && (
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -836,17 +843,78 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
                                 <Plus className="w-4 h-4 mr-1.5" />
                                 New
                             </Button>
-                            <div className="flex items-center gap-2 border-l border-border pl-3 ml-1">
-                                <input
-                                    type="number"
-                                    className="w-12 h-7 border border-border rounded px-1.5 text-xs bg-background focus:outline-none focus:border-primary text-center"
-                                    placeholder="10"
-                                    defaultValue={10}
-                                />
-                                <span className="text-muted-foreground/60 text-xs text-nowrap">more rows at the bottom</span>
-                            </div>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                            {filteredCount} of {totalCount} rows
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        {/* Page Size Selector */}
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">Rows per page</span>
+                            <Select
+                                value={String(table.getState().pagination.pageSize)}
+                                onValueChange={(value) => table.setPageSize(Number(value))}
+                            >
+                                <SelectTrigger className="h-8 w-[70px] text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {[10, 25, 50, 100].map((size) => (
+                                        <SelectItem key={size} value={String(size)}>
+                                            {size}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
-                    )}
+
+                        {/* Page Info */}
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() || 1}
+                        </span>
+
+                        {/* Page Navigation */}
+                        <div className="flex items-center gap-1">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => table.setPageIndex(0)}
+                                disabled={!table.getCanPreviousPage()}
+                            >
+                                <ChevronsLeft className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => table.previousPage()}
+                                disabled={!table.getCanPreviousPage()}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => table.nextPage()}
+                                disabled={!table.getCanNextPage()}
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                                disabled={!table.getCanNextPage()}
+                            >
+                                <ChevronsRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <BulkActionBar
