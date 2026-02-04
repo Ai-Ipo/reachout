@@ -1,62 +1,173 @@
 /**
- * Static column mapping from Tofler CSV exports to our database fields
+ * CSV column mapping for bulk company imports
  *
- * Tofler columns are mapped to our schema:
- * - name (required)
- * - eligibility_status
- * - turnover
- * - profit
- * - borrowed_funds
- * - loan_interest
+ * Supports both Tofler CSV exports and custom spreadsheet formats
+ * All column matching is CASE-INSENSITIVE
  */
 
-// All possible Tofler column names mapped to our database fields
+// All possible column names mapped to our database fields (lowercase for case-insensitive matching)
 // Order matters - first match wins for each target field
-export const TOFLER_COLUMN_MAP: Record<string, string> = {
-  // Company Name (required) - always present in Tofler
-  "Company Name": "name",
+const COLUMN_ALIASES_LOWER: Record<string, string> = {
+  // Company Name (required)
+  "company name": "name",
+  "name of the company": "name",
+  "company_name": "name",
+  "name": "name",
 
-  // Eligibility - added by user in Sheets
-  "Eligibility": "eligibility_status",
-  "eligibility_status": "eligibility_status",
+  // Internal/Referral ID
+  "referral code": "internal_id",
+  "referral_code": "internal_id",
+  "internal_id": "internal_id",
+
+  // Financial Year
+  "financial year": "financial_year",
+  "financial_year": "financial_year",
+  "fy": "financial_year",
+
+  // Eligibility
   "eligibility": "eligibility_status",
-  "Eligible": "eligibility_status",
+  "eligibility_status": "eligibility_status",
+  "eligible": "eligibility_status",
 
   // Profit fields
-  "Net Profit": "profit",
-  "Profit Before Tax": "profit",
-  "Profit from Continuing Operations": "profit",
-  "Operating Profit": "profit",
-  "EBIT": "profit",
+  "profit": "profit",
+  "profit ": "profit", // with trailing space
+  "net profit": "profit",
+  "profit before tax": "profit",
+  "profit from continuing operations": "profit",
+  "operating profit": "profit",
+  "ebit": "profit",
 
   // Turnover/Revenue fields
-  "Sales": "turnover",
-  "Total Income": "turnover",
+  "turnover": "turnover",
+  "turnover ": "turnover", // with trailing space
+  "sales": "turnover",
+  "total income": "turnover",
+  "revenue": "turnover",
 
   // Borrowed Funds
-  "Total Borrowings": "borrowed_funds",
-  "TotalBorrowings": "borrowed_funds",
-  "Long Term Borrowings": "borrowed_funds",
-  "Short Term Borrowings": "borrowed_funds",
+  "borrowed funds": "borrowed_funds",
+  "borrowed_funds": "borrowed_funds",
+  "total borrowings": "borrowed_funds",
+  "totalborrrowings": "borrowed_funds",
+  "long term borrowings": "borrowed_funds",
+  "short term borrowings": "borrowed_funds",
 
-  // Loan Interest
-  "Finance Costs": "loan_interest",
+  // Loan Interest (handle truncated "Loan intere")
+  "loan interest": "loan_interest",
+  "loan intere": "loan_interest",
+  "finance costs": "loan_interest",
+  "interest": "loan_interest",
+
+  // Board Type
+  "board": "board_type",
+  "board_type": "board_type",
+  "board type": "board_type",
+
+  // Official Mail
+  "official mail id": "official_mail",
+  "official mail": "official_mail",
+  "official_mail": "official_mail",
+  "company email": "official_mail",
+
+  // Calling Status
+  "calling status": "calling_status",
+  "calling_status": "calling_status",
+
+  // Response
+  "response (in detail if any)": "response",
+  "response (if any)": "response",
+  "response": "response",
+
+  // WhatsApp Status
+  "whatsapp status": "whatsapp_status",
+  "whatsapp_status": "whatsapp_status",
+
+  // Assigned To / Representative
+  "assigned to": "assigned_to",
+  "assigned_to": "assigned_to",
+  "assigned": "assigned_to",
+  "representative name": "assigned_to",
+  "representative": "assigned_to",
+
+  // Director 1
+  "din 1": "director_1_din",
+  "din no 1": "director_1_din",
+  "director name 1": "director_1_name",
+  "contact no 1": "director_1_contact",
+  "email id 1": "director_1_email",
+
+  // Director 2
+  "din 2": "director_2_din",
+  "din no 2": "director_2_din",
+  "director name 2": "director_2_name",
+  "contact no 2": "director_2_contact",
+  "email id 2": "director_2_email",
+
+  // Director 3
+  "din 3": "director_3_din",
+  "din no 3": "director_3_din",
+  "director name 3": "director_3_name",
+  "contact no 3": "director_3_contact",
+  "email id 3": "director_3_email",
 }
 
-// Our database fields that can be populated from CSV
-export const DB_FIELDS = ["name", "eligibility_status", "turnover", "profit", "borrowed_funds", "loan_interest"] as const
+// Our database fields that can be populated from CSV (for display in preview)
+export const DB_FIELDS = [
+  "name",
+  "internal_id",
+  "financial_year",
+  "eligibility_status",
+  "board_type",
+  "turnover",
+  "profit",
+  "borrowed_funds",
+  "loan_interest",
+  "official_mail",
+  "calling_status",
+  "whatsapp_status",
+  "response",
+  "assigned_to",
+] as const
 
-export type DBField = typeof DB_FIELDS[number]
+export type DBField = (typeof DB_FIELDS)[number]
+
+// Director fields (not shown in main preview, but used in import)
+export const DIRECTOR_FIELDS = [
+  "director_1_din", "director_1_name", "director_1_contact", "director_1_email",
+  "director_2_din", "director_2_name", "director_2_contact", "director_2_email",
+  "director_3_din", "director_3_name", "director_3_contact", "director_3_email",
+] as const
 
 // Valid eligibility values
 export const VALID_ELIGIBILITY = ["eligible", "ineligible", "pending"] as const
 
-// Numeric fields that need Indian currency parsing
-const NUMERIC_FIELDS = ["turnover", "profit", "borrowed_funds", "loan_interest"]
+// Valid calling status values
+export const VALID_CALLING_STATUS = [
+  "queued",
+  "callback",
+  "not_answered",
+  "not_contactable",
+  "interested",
+  "not_interested",
+] as const
+
+// Valid WhatsApp status values
+export const VALID_WHATSAPP_STATUS = [
+  "not_sent",
+  "sent",
+  "delivered",
+  "read",
+  "replied",
+  "failed",
+] as const
+
+// Valid board types
+export const VALID_BOARD_TYPES = ["SME", "Main", "Other"] as const
 
 /**
  * Parse Indian currency format to number
- * Handles formats like: "24.0 lac", "63.7 cr", "0.0 k", "-62.1 lac"
+ * Handles formats like: "24.0 lac", "63.7 cr", "0.0 k", "-62.1 lac", "425.7 CR"
  * - lac/lakh = 100,000 (1 lakh)
  * - cr/crore = 10,000,000 (1 crore)
  * - k = 1,000 (thousand)
@@ -66,6 +177,9 @@ export function parseIndianCurrency(value: string): number | null {
   if (!value || !value.trim()) return null
 
   const trimmed = value.trim().toLowerCase()
+
+  // Handle "-" as null
+  if (trimmed === "-" || trimmed === "") return null
 
   // Try to extract number and suffix
   const match = trimmed.match(/^(-?[\d.,]+)\s*(lac|lakh|cr|crore|k)?$/i)
@@ -96,38 +210,181 @@ export function parseIndianCurrency(value: string): number | null {
 }
 
 /**
+ * Normalize calling status value
+ */
+function normalizeCallingStatus(value: string): string | null {
+  const trimmed = value.trim().toLowerCase().replace(/\s+/g, "_")
+
+  // Map common variations
+  const statusMap: Record<string, string> = {
+    "queued": "queued",
+    "queue": "queued",
+    "pending": "queued",
+    "callback": "callback",
+    "call_back": "callback",
+    "picked_up": "callback",
+    "not_answered": "not_answered",
+    "no_answer": "not_answered",
+    "not_contactable": "not_contactable",
+    "unreachable": "not_contactable",
+    "interested": "interested",
+    "not_interested": "not_interested",
+    "rejected": "not_interested",
+  }
+
+  return statusMap[trimmed] || (VALID_CALLING_STATUS.includes(trimmed as typeof VALID_CALLING_STATUS[number]) ? trimmed : null)
+}
+
+/**
+ * Normalize board type value
+ */
+function normalizeBoardType(value: string): string | null {
+  const trimmed = value.trim().toLowerCase()
+
+  // Handle "Main Board" -> "Main"
+  if (trimmed === "sme") return "SME"
+  if (trimmed === "main" || trimmed === "main board") return "Main"
+  if (trimmed === "other") return "Other"
+
+  return null
+}
+
+export interface DirectorData {
+  din_no?: string
+  name?: string
+  contact_no?: string
+  email?: string
+}
+
+export interface MappedCompanyData {
+  name: string | null
+  internal_id: string | null
+  financial_year: string | null
+  eligibility_status: string
+  board_type: string | null
+  turnover: number | null
+  profit: number | null
+  borrowed_funds: number | null
+  loan_interest: number | null
+  official_mail: string | null
+  calling_status: string
+  whatsapp_status: string | null
+  response: string | null
+  assigned_to_name: string | null // Will be resolved to profile ID later
+  directors: DirectorData[]
+}
+
+/**
  * Parse a CSV row into our database format
  * Returns null if company name is missing
  */
 export function mapRowToCompany(
   row: Record<string, string>,
   columnMapping: Record<string, string>
-): Record<string, string | number | null> | null {
-  const result: Record<string, string | number | null> = {
+): MappedCompanyData | null {
+  const result: MappedCompanyData = {
     name: null,
-    eligibility_status: "pending", // default
+    internal_id: null,
+    financial_year: null,
+    eligibility_status: "pending",
+    board_type: null,
     turnover: null,
     profit: null,
     borrowed_funds: null,
     loan_interest: null,
+    official_mail: null,
+    calling_status: "queued",
+    whatsapp_status: null,
+    response: null,
+    assigned_to_name: null,
+    directors: [],
+  }
+
+  // Temporary storage for director fields
+  const directorData: Record<number, DirectorData> = {
+    1: {},
+    2: {},
+    3: {},
   }
 
   // Map each CSV column to our fields
   for (const [csvColumn, value] of Object.entries(row)) {
     const dbField = columnMapping[csvColumn]
-    if (dbField && value && value.trim()) {
-      if (dbField === "eligibility_status") {
-        // Normalize eligibility value
-        const normalized = value.trim().toLowerCase()
-        if (VALID_ELIGIBILITY.includes(normalized as any)) {
-          result[dbField] = normalized
+    if (!dbField || !value || !value.trim()) continue
+
+    const trimmedValue = value.trim()
+
+    // Handle director fields
+    const directorMatch = dbField.match(/^director_(\d)_(din|name|contact|email)$/)
+    if (directorMatch) {
+      const dirNum = parseInt(directorMatch[1])
+      const fieldType = directorMatch[2]
+
+      if (fieldType === "din") directorData[dirNum].din_no = trimmedValue
+      else if (fieldType === "name") directorData[dirNum].name = trimmedValue
+      else if (fieldType === "contact") directorData[dirNum].contact_no = trimmedValue
+      else if (fieldType === "email") directorData[dirNum].email = trimmedValue
+      continue
+    }
+
+    // Handle regular fields
+    switch (dbField) {
+      case "name":
+        result.name = trimmedValue
+        break
+      case "internal_id":
+        result.internal_id = trimmedValue
+        break
+      case "financial_year":
+        result.financial_year = trimmedValue
+        break
+      case "eligibility_status": {
+        const normalized = trimmedValue.toLowerCase()
+        if (VALID_ELIGIBILITY.includes(normalized as typeof VALID_ELIGIBILITY[number])) {
+          result.eligibility_status = normalized
         }
-      } else if (NUMERIC_FIELDS.includes(dbField)) {
-        // Parse Indian currency format for numeric fields
-        result[dbField] = parseIndianCurrency(value)
-      } else {
-        result[dbField] = value.trim()
+        break
       }
+      case "board_type": {
+        const normalized = normalizeBoardType(trimmedValue)
+        if (normalized) result.board_type = normalized
+        break
+      }
+      case "official_mail":
+        result.official_mail = trimmedValue
+        break
+      case "calling_status": {
+        const normalized = normalizeCallingStatus(trimmedValue)
+        if (normalized) result.calling_status = normalized
+        break
+      }
+      case "whatsapp_status": {
+        const normalized = trimmedValue.toLowerCase().replace(/\s+/g, "_")
+        if (VALID_WHATSAPP_STATUS.includes(normalized as typeof VALID_WHATSAPP_STATUS[number])) {
+          result.whatsapp_status = normalized
+        }
+        break
+      }
+      case "response":
+        result.response = trimmedValue
+        break
+      case "assigned_to":
+        result.assigned_to_name = trimmedValue
+        break
+      case "turnover":
+      case "profit":
+      case "borrowed_funds":
+      case "loan_interest":
+        result[dbField] = parseIndianCurrency(trimmedValue)
+        break
+    }
+  }
+
+  // Collect non-empty directors
+  for (let i = 1; i <= 3; i++) {
+    const dir = directorData[i]
+    if (dir.din_no || dir.name || dir.contact_no || dir.email) {
+      result.directors.push(dir)
     }
   }
 
@@ -140,7 +397,7 @@ export function mapRowToCompany(
 }
 
 /**
- * Detect which CSV columns map to our fields
+ * Detect which CSV columns map to our fields (case-insensitive)
  * Returns a mapping of CSV column name -> our field name
  */
 export function detectColumnMapping(csvHeaders: string[]): Record<string, string> {
@@ -149,12 +406,19 @@ export function detectColumnMapping(csvHeaders: string[]): Record<string, string
 
   for (const header of csvHeaders) {
     const trimmedHeader = header.trim()
-    const dbField = TOFLER_COLUMN_MAP[trimmedHeader]
+    // Case-insensitive lookup
+    const dbField = COLUMN_ALIASES_LOWER[trimmedHeader.toLowerCase()]
+
+    // For director fields, allow multiple (din, name, contact, email for each director)
+    const isDirectorField = dbField?.startsWith("director_")
 
     // Only map if we haven't already mapped this field (first match wins)
-    if (dbField && !usedFields.has(dbField)) {
+    // Exception: director fields can all be mapped
+    if (dbField && (isDirectorField || !usedFields.has(dbField))) {
       mapping[trimmedHeader] = dbField
-      usedFields.add(dbField)
+      if (!isDirectorField) {
+        usedFields.add(dbField)
+      }
     }
   }
 

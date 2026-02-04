@@ -31,6 +31,7 @@ import {
     mapRowToCompany,
     DB_FIELDS,
     type DBField,
+    type MappedCompanyData,
 } from "@/lib/csv-column-map"
 
 interface CityCSVUploadProps {
@@ -43,7 +44,7 @@ interface CityCSVUploadProps {
 
 interface ParsedRow {
     original: Record<string, string>
-    mapped: Record<string, string | number | null> | null
+    mapped: MappedCompanyData | null
     isDuplicate?: boolean
     duplicateId?: string // ID of existing company if duplicate
     isRemoved?: boolean // User removed this row from import
@@ -58,11 +59,19 @@ interface UploadResult {
 // Display labels for our database fields
 const FIELD_LABELS: Record<DBField, string> = {
     name: "Company Name",
+    internal_id: "Referral Code",
+    financial_year: "FY",
     eligibility_status: "Eligibility",
+    board_type: "Board",
     turnover: "Turnover",
     profit: "Profit",
     borrowed_funds: "Borrowed Funds",
-    loan_interest: "Loan Interest",
+    loan_interest: "Interest",
+    official_mail: "Email",
+    calling_status: "Status",
+    whatsapp_status: "WhatsApp",
+    response: "Response",
+    assigned_to: "Assigned",
 }
 
 // Numeric fields for display formatting
@@ -90,6 +99,44 @@ function formatDisplayValue(value: string | number | null | undefined, field: st
     return String(value)
 }
 
+// Get display value from mapped data
+function getMappedValue(mapped: MappedCompanyData | null, field: DBField): string | number | null {
+    if (!mapped) return null
+
+    switch (field) {
+        case "name":
+            return mapped.name
+        case "internal_id":
+            return mapped.internal_id
+        case "financial_year":
+            return mapped.financial_year
+        case "eligibility_status":
+            return mapped.eligibility_status
+        case "board_type":
+            return mapped.board_type
+        case "turnover":
+            return mapped.turnover
+        case "profit":
+            return mapped.profit
+        case "borrowed_funds":
+            return mapped.borrowed_funds
+        case "loan_interest":
+            return mapped.loan_interest
+        case "official_mail":
+            return mapped.official_mail
+        case "calling_status":
+            return mapped.calling_status
+        case "whatsapp_status":
+            return mapped.whatsapp_status
+        case "response":
+            return mapped.response
+        case "assigned_to":
+            return mapped.assigned_to_name
+        default:
+            return null
+    }
+}
+
 export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess }: CityCSVUploadProps) {
     const [step, setStep] = useState<"upload" | "preview" | "result">("upload")
     const [uploading, setUploading] = useState(false)
@@ -98,12 +145,18 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
     const [columnMapping, setColumnMapping] = useState<Record<string, string>>({})
     const [validationError, setValidationError] = useState<string | null>(null)
     const [result, setResult] = useState<UploadResult | null>(null)
+    const [profileMap, setProfileMap] = useState<Map<string, string>>(new Map()) // name -> id
     const { getToken } = useAuth()
 
     // Get mapped fields that are present in the CSV
     const mappedFields = useMemo(() => {
-        const fields = new Set(Object.values(columnMapping))
+        const fields = new Set(Object.values(columnMapping).filter(f => !f.startsWith("director_")))
         return DB_FIELDS.filter(f => fields.has(f))
+    }, [columnMapping])
+
+    // Check if we have director fields
+    const hasDirectorFields = useMemo(() => {
+        return Object.values(columnMapping).some(f => f.startsWith("director_"))
     }, [columnMapping])
 
     // Stats for preview
@@ -114,7 +167,8 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
         const duplicates = parsedData.filter(r => r.isDuplicate && !r.isRemoved).length
         const invalid = parsedData.filter(r => r.mapped === null && !r.isRemoved).length
         const toImport = parsedData.filter(r => r.mapped !== null && !r.isDuplicate && !r.isRemoved).length
-        return { total, valid, duplicates, invalid, removed, toImport }
+        const withDirectors = parsedData.filter(r => r.mapped !== null && !r.isRemoved && r.mapped.directors.length > 0).length
+        return { total, valid, duplicates, invalid, removed, toImport, withDirectors }
     }, [parsedData])
 
     // Remove a row from import
@@ -130,6 +184,7 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
         setColumnMapping({})
         setValidationError(null)
         setResult(null)
+        setProfileMap(new Map())
     }
 
     const handleClose = () => {
@@ -175,11 +230,12 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                     mapped: mapRowToCompany(row, mapping),
                 }))
 
-                // Check for duplicates against existing companies in this city
+                // Check for duplicates and load profile map
                 try {
                     const token = await getToken({ template: "supabase", skipCache: true })
                     const supabase = createClient(token)
 
+                    // Check for duplicate companies in this city
                     const { data: existingCompanies } = await supabase
                         .from("companies")
                         .select("id, name")
@@ -199,6 +255,33 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                                 row.isDuplicate = true
                                 row.duplicateId = existingId
                             }
+                        }
+                    }
+
+                    // Load profiles for assigned_to lookup
+                    const assignedNames = new Set(
+                        mapped
+                            .filter(r => r.mapped?.assigned_to_name)
+                            .map(r => r.mapped!.assigned_to_name!.toLowerCase().trim())
+                    )
+
+                    if (assignedNames.size > 0) {
+                        const { data: profiles } = await supabase
+                            .from("profiles")
+                            .select("id, full_name, email")
+
+                        if (profiles) {
+                            const pMap = new Map<string, string>()
+                            for (const profile of profiles) {
+                                // Map by full name and email
+                                if (profile.full_name) {
+                                    pMap.set(profile.full_name.toLowerCase().trim(), profile.id)
+                                }
+                                if (profile.email) {
+                                    pMap.set(profile.email.toLowerCase().trim(), profile.id)
+                                }
+                            }
+                            setProfileMap(pMap)
                         }
                     }
                 } catch (err) {
@@ -224,32 +307,75 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
             const supabase = createClient(token)
 
             // Filter to valid, non-duplicate, non-removed rows
-            // internal_id will be generated by the database trigger using the sequence table
-            const toInsert = parsedData
-                .filter(r => r.mapped !== null && !r.isDuplicate && !r.isRemoved)
-                .map((r) => ({
-                    city_id: cityId,
-                    // internal_id is NOT set - trigger will generate it atomically
-                    name: r.mapped!.name,
-                    eligibility_status: r.mapped!.eligibility_status || "pending",
-                    turnover: r.mapped!.turnover || null,
-                    profit: r.mapped!.profit || null,
-                    borrowed_funds: r.mapped!.borrowed_funds || null,
-                    loan_interest: r.mapped!.loan_interest || null,
-                }))
+            const rowsToInsert = parsedData.filter(
+                r => r.mapped !== null && !r.isDuplicate && !r.isRemoved
+            )
 
             let addedCount = 0
             let errorCount = 0
 
-            if (toInsert.length > 0) {
-                // Insert one at a time since internal_ids are pre-generated
-                for (const company of toInsert) {
-                    const { error } = await supabase.from("companies").insert(company)
-                    if (error) {
-                        console.error("Insert error:", error)
-                        errorCount++
-                    } else {
-                        addedCount++
+            for (const row of rowsToInsert) {
+                const mapped = row.mapped!
+
+                // Resolve assigned_to name to profile ID
+                let assignedToId: string | null = null
+                if (mapped.assigned_to_name) {
+                    const normalizedName = mapped.assigned_to_name.toLowerCase().trim()
+                    assignedToId = profileMap.get(normalizedName) || null
+                }
+
+                // Prepare company data
+                const companyData = {
+                    city_id: cityId,
+                    name: mapped.name,
+                    // Only set internal_id if provided (otherwise let trigger generate it)
+                    ...(mapped.internal_id && { internal_id: mapped.internal_id }),
+                    financial_year: mapped.financial_year || null,
+                    eligibility_status: mapped.eligibility_status || "pending",
+                    board_type: mapped.board_type || null,
+                    turnover: mapped.turnover || null,
+                    profit: mapped.profit || null,
+                    borrowed_funds: mapped.borrowed_funds || null,
+                    loan_interest: mapped.loan_interest || null,
+                    official_mail: mapped.official_mail || null,
+                    calling_status: mapped.calling_status || "queued",
+                    whatsapp_status: mapped.whatsapp_status || null,
+                    response: mapped.response || null,
+                    assigned_to: assignedToId,
+                }
+
+                // Insert company
+                const { data: insertedCompany, error: companyError } = await supabase
+                    .from("companies")
+                    .insert(companyData)
+                    .select("id")
+                    .single()
+
+                if (companyError) {
+                    console.error("Insert error:", companyError)
+                    errorCount++
+                    continue
+                }
+
+                addedCount++
+
+                // Insert directors if any
+                if (mapped.directors.length > 0 && insertedCompany) {
+                    const directorsToInsert = mapped.directors.map(dir => ({
+                        company_id: insertedCompany.id,
+                        din_no: dir.din_no || null,
+                        name: dir.name || null,
+                        contact_no: dir.contact_no || null,
+                        email: dir.email || null,
+                    }))
+
+                    const { error: directorError } = await supabase
+                        .from("directors")
+                        .insert(directorsToInsert)
+
+                    if (directorError) {
+                        console.error("Director insert error:", directorError)
+                        // Don't count as error - company was still created
                     }
                 }
             }
@@ -324,7 +450,7 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                                                 {uploading ? "Processing..." : "Click to upload or drag and drop"}
                                             </span>
                                         </p>
-                                        <p className="text-xs text-muted-foreground">CSV file with "Company Name" column (required)</p>
+                                        <p className="text-xs text-muted-foreground">CSV file with company data</p>
                                     </div>
                                     <Input
                                         id="csv-upload"
@@ -335,6 +461,11 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                                         disabled={uploading}
                                     />
                                 </label>
+
+                                <div className="mt-4 text-xs text-muted-foreground space-y-1">
+                                    <p className="font-medium">Supported columns:</p>
+                                    <p>Name of the company (required), Referral Code, Financial Year, Turnover, Profit, Borrowed funds, Loan Interest, Eligibility, Board, DIN 1-3, Director Name 1-3, Contact No 1-3, Email ID 1-3, Assigned to, Calling status, Response</p>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -343,7 +474,7 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                     {step === "preview" && (
                         <>
                             {/* Stats bar */}
-                            <div className="flex-shrink-0 flex items-center gap-4 p-4 bg-muted/30 rounded-lg mb-4">
+                            <div className="flex-shrink-0 flex items-center gap-4 p-4 bg-muted/30 rounded-lg mb-4 flex-wrap">
                                 <div className="text-sm">
                                     <span className="text-muted-foreground">Total rows:</span>{" "}
                                     <span className="font-medium">{stats.total}</span>
@@ -356,6 +487,12 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                                     <span className="text-muted-foreground">Duplicates (skipped):</span>{" "}
                                     <span className="font-medium text-status-warning">{stats.duplicates}</span>
                                 </div>
+                                {hasDirectorFields && (
+                                    <div className="text-sm">
+                                        <span className="text-muted-foreground">With directors:</span>{" "}
+                                        <span className="font-medium">{stats.withDirectors}</span>
+                                    </div>
+                                )}
                                 <div className="text-sm">
                                     <span className="text-muted-foreground">To import:</span>{" "}
                                     <span className="font-medium text-primary">{stats.toImport}</span>
@@ -387,11 +524,16 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                                     <TableHeader className="sticky top-0 bg-background z-10">
                                         <TableRow>
                                             <TableHead className="w-[50px]">#</TableHead>
-                                            <TableHead className="w-[120px]">Status</TableHead>
+                                            <TableHead className="w-[100px]">Status</TableHead>
                                             {mappedFields.map(field => (
-                                                <TableHead key={field}>{FIELD_LABELS[field]}</TableHead>
+                                                <TableHead key={field} className="whitespace-nowrap">
+                                                    {FIELD_LABELS[field]}
+                                                </TableHead>
                                             ))}
-                                            <TableHead className="w-[100px] text-right">Actions</TableHead>
+                                            {hasDirectorFields && (
+                                                <TableHead>Directors</TableHead>
+                                            )}
+                                            <TableHead className="w-[80px] text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -421,9 +563,18 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                                                     </TableCell>
                                                     {mappedFields.map(field => (
                                                         <TableCell key={field} className="max-w-[200px] truncate">
-                                                            {formatDisplayValue(row.mapped?.[field], field)}
+                                                            {formatDisplayValue(getMappedValue(row.mapped, field), field)}
                                                         </TableCell>
                                                     ))}
+                                                    {hasDirectorFields && (
+                                                        <TableCell>
+                                                            {row.mapped?.directors.length ? (
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    {row.mapped.directors.length} director{row.mapped.directors.length > 1 ? "s" : ""}
+                                                                </span>
+                                                            ) : "-"}
+                                                        </TableCell>
+                                                    )}
                                                     <TableCell className="text-right">
                                                         <div className="flex items-center justify-end gap-1">
                                                             {row.isDuplicate && row.duplicateId && (
@@ -457,12 +608,19 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                                 </Table>
                             </div>
 
-                            {/* Info message when no eligibility column detected */}
-                            {!mappedFields.includes("eligibility_status") && (
-                                <p className="text-xs text-muted-foreground mt-2">
-                                    No eligibility column detected. All companies will be marked as "pending".
-                                </p>
-                            )}
+                            {/* Info messages */}
+                            <div className="flex-shrink-0 mt-2 space-y-1">
+                                {!mappedFields.includes("eligibility_status") && (
+                                    <p className="text-xs text-muted-foreground">
+                                        No eligibility column detected. All companies will be marked as "pending".
+                                    </p>
+                                )}
+                                {mappedFields.includes("assigned_to") && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Assigned to will be matched by name or email. Unmatched names will be skipped.
+                                    </p>
+                                )}
+                            </div>
                         </>
                     )}
 
