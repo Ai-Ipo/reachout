@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Users, Trash2, X, Check } from "lucide-react"
+import { Users, Trash2, X, Phone, CheckCircle, MessageSquare, Building2 } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,6 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog"
 import {
     AlertDialog,
@@ -23,7 +22,6 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-    AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
     Select,
@@ -36,12 +34,29 @@ import { Label } from "@/components/ui/label"
 import { AnimatePresence, motion } from "framer-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getTelemarketers, type Telemarketer } from "@/app/actions/get-telemarketers"
+import {
+    StatusBadge,
+    getCallingStatusVariant,
+    getEligibilityStatusVariant,
+    getWhatsappStatusVariant,
+    getBoardStatusVariant,
+} from "@/components/ui/status-badge"
+import {
+    callingStatusLabels,
+    eligibilityStatusLabels,
+    whatsappStatusLabels,
+    boardTypeLabels,
+} from "@/lib/schemas/company-schema"
 
 interface BulkActionBarProps {
     selectedCount: number
     onClearSelection: () => void
     onAssign: () => void
     onDelete: () => void
+    onCallingStatus: () => void
+    onEligibility: () => void
+    onWhatsapp: () => void
+    onBoardType: () => void
 }
 
 export function BulkActionBar({
@@ -49,6 +64,10 @@ export function BulkActionBar({
     onClearSelection,
     onAssign,
     onDelete,
+    onCallingStatus,
+    onEligibility,
+    onWhatsapp,
+    onBoardType,
 }: BulkActionBarProps) {
     return (
         <AnimatePresence>
@@ -75,6 +94,46 @@ export function BulkActionBar({
                     >
                         <Users className="w-3.5 h-3.5 mr-1.5" />
                         Assign
+                    </Button>
+
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onCallingStatus}
+                        className="h-7 px-2 text-xs hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                        <Phone className="w-3.5 h-3.5 mr-1.5" />
+                        Call Status
+                    </Button>
+
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onEligibility}
+                        className="h-7 px-2 text-xs hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                        <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                        Eligibility
+                    </Button>
+
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onWhatsapp}
+                        className="h-7 px-2 text-xs hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                        <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
+                        WhatsApp
+                    </Button>
+
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onBoardType}
+                        className="h-7 px-2 text-xs hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                        <Building2 className="w-3.5 h-3.5 mr-1.5" />
+                        Board
                     </Button>
 
                     <Button
@@ -268,5 +327,157 @@ export function BulkDeleteDialog({
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+    )
+}
+
+// ── Generic Bulk Status Dialog ──────────────────────────────────────────
+
+interface BulkStatusDialogProps<T extends string> {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    selectedIds: string[]
+    onSuccess: () => void
+    title: string
+    description: string
+    field: string
+    labels: Record<T, string>
+    getVariant: (value: string) => any
+}
+
+function BulkStatusDialog<T extends string>({
+    open,
+    onOpenChange,
+    selectedIds,
+    onSuccess,
+    title,
+    description,
+    field,
+    labels,
+    getVariant,
+}: BulkStatusDialogProps<T>) {
+    const [loading, setLoading] = React.useState(false)
+    const [value, setValue] = React.useState<string>("")
+
+    const handleUpdate = async () => {
+        if (!value) return
+        setLoading(true)
+        try {
+            const supabase = createClient()
+            const { error } = await supabase
+                .from("companies")
+                .update({ [field]: value })
+                .in("id", selectedIds)
+
+            if (error) throw error
+
+            toast.success(`Updated ${selectedIds.length} companies`)
+            onSuccess()
+            onOpenChange(false)
+            setValue("")
+        } catch (error) {
+            console.error(error)
+            toast.error(`Failed to update ${field.replace("_", " ")}`)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) setValue("") }}>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>{title}</DialogTitle>
+                    <DialogDescription>{description}</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label>Status</Label>
+                        <Select value={value} onValueChange={setValue}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {Object.entries(labels).map(([val, label]) => (
+                                    <SelectItem key={val} value={val}>
+                                        <StatusBadge variant={getVariant(val)} size="sm" className="font-normal">
+                                            {label as string}
+                                        </StatusBadge>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => { onOpenChange(false); setValue("") }}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleUpdate} disabled={!value || loading}>
+                        {loading ? "Updating..." : "Update"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+// ── Specific Bulk Dialogs ───────────────────────────────────────────────
+
+interface BulkDialogProps {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    selectedIds: string[]
+    onSuccess: () => void
+}
+
+export function BulkCallingStatusDialog(props: BulkDialogProps) {
+    return (
+        <BulkStatusDialog
+            {...props}
+            title="Update Calling Status"
+            description={`Set calling status for ${props.selectedIds.length} selected companies.`}
+            field="calling_status"
+            labels={callingStatusLabels}
+            getVariant={getCallingStatusVariant}
+        />
+    )
+}
+
+export function BulkEligibilityDialog(props: BulkDialogProps) {
+    return (
+        <BulkStatusDialog
+            {...props}
+            title="Update Eligibility"
+            description={`Set eligibility status for ${props.selectedIds.length} selected companies.`}
+            field="eligibility_status"
+            labels={eligibilityStatusLabels}
+            getVariant={getEligibilityStatusVariant}
+        />
+    )
+}
+
+export function BulkWhatsappDialog(props: BulkDialogProps) {
+    return (
+        <BulkStatusDialog
+            {...props}
+            title="Update WhatsApp Status"
+            description={`Set WhatsApp status for ${props.selectedIds.length} selected companies.`}
+            field="whatsapp_status"
+            labels={whatsappStatusLabels}
+            getVariant={getWhatsappStatusVariant}
+        />
+    )
+}
+
+export function BulkBoardTypeDialog(props: BulkDialogProps) {
+    return (
+        <BulkStatusDialog
+            {...props}
+            title="Update Board Type"
+            description={`Set board type for ${props.selectedIds.length} selected companies.`}
+            field="board_type"
+            labels={boardTypeLabels}
+            getVariant={getBoardStatusVariant}
+        />
     )
 }

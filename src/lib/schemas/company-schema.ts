@@ -72,6 +72,7 @@ export const companyFormSchema = z.object({
     profit: z.string().optional().default(""),
     borrowed_funds: z.string().optional().default(""),
     loan_interest: z.string().optional().default(""),
+    eligible_amount: z.string().optional().default(""),
     eligibility_status: eligibilityStatusEnum.default("pending"),
     board_type: boardTypeEnum.optional(),
     official_mail: z.string().optional().default(""),

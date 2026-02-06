@@ -68,6 +68,7 @@ export function UsersGrid() {
                         key={user.id}
                         user={user}
                         onRoleUpdated={() => mutate()}
+                        onDelete={() => mutate()}
                     />
                 ))}
             </div>

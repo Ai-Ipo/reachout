@@ -67,6 +67,7 @@ const FIELD_LABELS: Record<DBField, string> = {
     profit: "Profit",
     borrowed_funds: "Borrowed Funds",
     loan_interest: "Interest",
+    eligible_amount: "Eligible Amt",
     official_mail: "Email",
     calling_status: "Status",
     whatsapp_status: "WhatsApp",
@@ -75,7 +76,7 @@ const FIELD_LABELS: Record<DBField, string> = {
 }
 
 // Numeric fields for display formatting
-const NUMERIC_DISPLAY_FIELDS = ["turnover", "profit", "borrowed_funds", "loan_interest"]
+const NUMERIC_DISPLAY_FIELDS = ["turnover", "profit", "borrowed_funds", "loan_interest", "eligible_amount"]
 
 // Format value for display in preview table
 function formatDisplayValue(value: string | number | null | undefined, field: string): string {
@@ -337,6 +338,7 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                     profit: mapped.profit || null,
                     borrowed_funds: mapped.borrowed_funds || null,
                     loan_interest: mapped.loan_interest || null,
+                    eligible_amount: mapped.eligible_amount || null,
                     official_mail: mapped.official_mail || null,
                     calling_status: mapped.calling_status || "queued",
                     whatsapp_status: mapped.whatsapp_status || null,

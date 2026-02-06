@@ -102,6 +102,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
             profit: company.profit?.toString() || "",
             borrowed_funds: company.borrowed_funds?.toString() || "",
             loan_interest: company.loan_interest?.toString() || "",
+            eligible_amount: (company as any).eligible_amount?.toString() || "",
             eligibility_status: company.eligibility_status as "eligible" | "ineligible" | "pending" || "pending",
             board_type: company.board_type as "SME" | "Main" | "Other" | undefined,
             official_mail: company.official_mail || "",
@@ -138,6 +139,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
             profit: company.profit?.toString() || "",
             borrowed_funds: company.borrowed_funds?.toString() || "",
             loan_interest: company.loan_interest?.toString() || "",
+            eligible_amount: (company as any).eligible_amount?.toString() || "",
             eligibility_status: company.eligibility_status as "eligible" | "ineligible" | "pending" || "pending",
             board_type: company.board_type as "SME" | "Main" | "Other" | undefined,
             official_mail: company.official_mail || "",
@@ -210,6 +212,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                     profit: data.profit ? parseFloat(data.profit) : null,
                     borrowed_funds: data.borrowed_funds ? parseFloat(data.borrowed_funds) : null,
                     loan_interest: data.loan_interest ? parseFloat(data.loan_interest) : null,
+                    eligible_amount: data.eligible_amount ? parseFloat(data.eligible_amount) : null,
                     eligibility_status: data.eligibility_status,
                     board_type: data.board_type || null,
                     official_mail: data.official_mail || null,
@@ -275,6 +278,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                     profit,
                     borrowed_funds,
                     loan_interest,
+                    eligible_amount,
                     eligibility_status,
                     board_type,
                     official_mail,
@@ -327,7 +331,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
     const { errors } = form.formState
     const sectionErrors = {
         basic: !!(errors.name || errors.financial_year || errors.board_type || errors.eligibility_status || errors.website),
-        financials: !!(errors.turnover || errors.profit || errors.borrowed_funds || errors.loan_interest),
+        financials: !!(errors.turnover || errors.profit || errors.borrowed_funds || errors.loan_interest || errors.eligible_amount),
         directors: !!(errors.directors),
         contact: !!(errors.official_mail || errors.calling_status || errors.whatsapp_status),
         notes: !!(errors.response || errors.remarks),
@@ -578,6 +582,22 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                                                 <FormLabel className="text-xs text-muted-foreground">Loan Interest (%)</FormLabel>
                                                 <FormControl>
                                                     <Input type="number" step="0.1" min="0" max="100" {...field} className="h-8 text-sm tabular-nums" />
+                                                </FormControl>
+                                                <FormMessage className="text-[11px]" />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="eligible_amount"
+                                        render={({ field }) => (
+                                            <FormItem className="col-span-2">
+                                                <FormLabel className="text-xs text-muted-foreground">Eligible Amount</FormLabel>
+                                                <FormControl>
+                                                    <div className="relative">
+                                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/60">₹</span>
+                                                        <Input type="number" step="0.01" min="0" {...field} className="h-8 text-sm pl-6 tabular-nums" />
+                                                    </div>
                                                 </FormControl>
                                                 <FormMessage className="text-[11px]" />
                                             </FormItem>

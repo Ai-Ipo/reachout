@@ -79,6 +79,7 @@ interface Company {
     profit?: number
     borrowed_funds?: number
     loan_interest?: number
+    eligible_amount?: number
     eligibility_status: string
     board_type?: string
     official_mail?: string
@@ -229,7 +230,8 @@ export function CompanyPage({ company, backUrl, backLabel = "Back" }: CompanyPag
                                     </div>
                                     <DataItem icon={IndianRupee} label="Borrowed Funds" value={formatCurrency(company.borrowed_funds)} />
                                     <DataItem icon={Percent} label="Interest Rate" value={formatPercent(company.loan_interest)} />
-                                    <DataItem icon={Calendar} label="Financial Year" value={formatFinancialYear(company.financial_year)} className="col-span-2" />
+                                    <DataItem icon={IndianRupee} label="Eligible Amount" value={formatCurrency(company.eligible_amount)} />
+                                    <DataItem icon={Calendar} label="Financial Year" value={formatFinancialYear(company.financial_year)} />
                                 </div>
                             </section>
 

@@ -50,7 +50,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { BulkActionBar, BulkAssignDialog, BulkDeleteDialog } from "./bulk-actions"
+import { BulkActionBar, BulkAssignDialog, BulkDeleteDialog, BulkCallingStatusDialog, BulkEligibilityDialog, BulkWhatsappDialog, BulkBoardTypeDialog } from "./bulk-actions"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { CompanyTableToolbar } from "./company-table-toolbar"
@@ -92,6 +92,7 @@ export interface Company {
     profit?: number
     borrowed_funds?: number
     loan_interest?: number
+    eligible_amount?: number
     eligibility_status: string
     board_type?: string
     official_mail?: string
@@ -154,6 +155,10 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
     // Bulk Action State
     const [assignDialogOpen, setAssignDialogOpen] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [callingDialogOpen, setCallingDialogOpen] = useState(false)
+    const [eligibilityDialogOpen, setEligibilityDialogOpen] = useState(false)
+    const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false)
+    const [boardDialogOpen, setBoardDialogOpen] = useState(false)
 
     const { getToken } = useAuth()
 
@@ -178,6 +183,7 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
                 profit,
                 borrowed_funds,
                 loan_interest,
+                eligible_amount,
                 eligibility_status,
                 board_type,
                 official_mail,
@@ -476,6 +482,24 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
                 </span>
             ),
             size: 70,
+        },
+        {
+            accessorKey: "eligible_amount",
+            header: ({ column }) => (
+                <button
+                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                >
+                    <span className="text-xs">Eligible Amt</span>
+                    <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />
+                </button>
+            ),
+            cell: ({ row }) => (
+                <span className="text-muted-foreground tabular-nums text-xs">
+                    {formatCurrency(row.getValue("eligible_amount"))}
+                </span>
+            ),
+            size: 100,
         },
         {
             accessorKey: "eligibility_status",
@@ -922,6 +946,10 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
                 onClearSelection={() => setRowSelection({})}
                 onAssign={() => setAssignDialogOpen(true)}
                 onDelete={() => setDeleteDialogOpen(true)}
+                onCallingStatus={() => setCallingDialogOpen(true)}
+                onEligibility={() => setEligibilityDialogOpen(true)}
+                onWhatsapp={() => setWhatsappDialogOpen(true)}
+                onBoardType={() => setBoardDialogOpen(true)}
             />
 
             <BulkAssignDialog
@@ -937,6 +965,46 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
             <BulkDeleteDialog
                 open={deleteDialogOpen}
                 onOpenChange={setDeleteDialogOpen}
+                selectedIds={table.getFilteredSelectedRowModel().rows.map(row => row.original.id)}
+                onSuccess={() => {
+                    setRowSelection({})
+                    setInternalRefreshKey(k => k + 1)
+                }}
+            />
+
+            <BulkCallingStatusDialog
+                open={callingDialogOpen}
+                onOpenChange={setCallingDialogOpen}
+                selectedIds={table.getFilteredSelectedRowModel().rows.map(row => row.original.id)}
+                onSuccess={() => {
+                    setRowSelection({})
+                    setInternalRefreshKey(k => k + 1)
+                }}
+            />
+
+            <BulkEligibilityDialog
+                open={eligibilityDialogOpen}
+                onOpenChange={setEligibilityDialogOpen}
+                selectedIds={table.getFilteredSelectedRowModel().rows.map(row => row.original.id)}
+                onSuccess={() => {
+                    setRowSelection({})
+                    setInternalRefreshKey(k => k + 1)
+                }}
+            />
+
+            <BulkWhatsappDialog
+                open={whatsappDialogOpen}
+                onOpenChange={setWhatsappDialogOpen}
+                selectedIds={table.getFilteredSelectedRowModel().rows.map(row => row.original.id)}
+                onSuccess={() => {
+                    setRowSelection({})
+                    setInternalRefreshKey(k => k + 1)
+                }}
+            />
+
+            <BulkBoardTypeDialog
+                open={boardDialogOpen}
+                onOpenChange={setBoardDialogOpen}
                 selectedIds={table.getFilteredSelectedRowModel().rows.map(row => row.original.id)}
                 onSuccess={() => {
                     setRowSelection({})

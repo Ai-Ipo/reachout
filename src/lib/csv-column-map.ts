@@ -59,6 +59,11 @@ const COLUMN_ALIASES_LOWER: Record<string, string> = {
   "finance costs": "loan_interest",
   "interest": "loan_interest",
 
+  // Eligible Amount
+  "eligible amount": "eligible_amount",
+  "eligible_amount": "eligible_amount",
+  "eligible amt": "eligible_amount",
+
   // Board Type
   "board": "board_type",
   "board_type": "board_type",
@@ -123,6 +128,7 @@ export const DB_FIELDS = [
   "profit",
   "borrowed_funds",
   "loan_interest",
+  "eligible_amount",
   "official_mail",
   "calling_status",
   "whatsapp_status",
@@ -266,6 +272,7 @@ export interface MappedCompanyData {
   profit: number | null
   borrowed_funds: number | null
   loan_interest: number | null
+  eligible_amount: number | null
   official_mail: string | null
   calling_status: string
   whatsapp_status: string | null
@@ -292,6 +299,7 @@ export function mapRowToCompany(
     profit: null,
     borrowed_funds: null,
     loan_interest: null,
+    eligible_amount: null,
     official_mail: null,
     calling_status: "queued",
     whatsapp_status: null,
@@ -375,6 +383,7 @@ export function mapRowToCompany(
       case "profit":
       case "borrowed_funds":
       case "loan_interest":
+      case "eligible_amount":
         result[dbField] = parseIndianCurrency(trimmedValue)
         break
     }
