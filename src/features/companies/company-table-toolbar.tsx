@@ -15,6 +15,8 @@ interface CompanyTableToolbarProps<TData> {
     table: Table<TData>
     totalCount: number
     onAddCompany?: () => void
+    searchValue: string
+    onSearchChange: (value: string) => void
 }
 
 import {
@@ -47,7 +49,9 @@ const boardTypes = Object.entries(boardTypeLabels).map(([value, label]) => ({
 export function CompanyTableToolbar<TData>({
     table,
     totalCount,
-    onAddCompany
+    onAddCompany,
+    searchValue,
+    onSearchChange,
 }: CompanyTableToolbarProps<TData>) {
     const isFiltered = table.getState().columnFilters.length > 0
     const [profiles, setProfiles] = useState<{ label: string, value: string }[]>([])
@@ -83,8 +87,8 @@ export function CompanyTableToolbar<TData>({
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Search companies..."
-                        value={(table.getState().globalFilter as string) ?? ""}
-                        onChange={(event) => table.setGlobalFilter(event.target.value)}
+                        value={searchValue}
+                        onChange={(event) => onSearchChange(event.target.value)}
                         className="h-9 w-[200px] lg:w-[300px] pl-8 bg-background/50"
                     />
                 </div>

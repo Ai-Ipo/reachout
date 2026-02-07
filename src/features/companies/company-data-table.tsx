@@ -148,7 +148,8 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
         if (!showCityColumn) visibility.city = false
         return visibility
     })
-    const [globalFilter, setGlobalFilter] = useState("")
+    const [searchTerm, setSearchTerm] = useState("")
+    const [debouncedSearch, setDebouncedSearch] = useState("")
     const [pageSize, setPageSize] = useState(50)
     const [internalRefreshKey, setInternalRefreshKey] = useState(0)
 
@@ -159,6 +160,14 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
     const [eligibilityDialogOpen, setEligibilityDialogOpen] = useState(false)
     const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false)
     const [boardDialogOpen, setBoardDialogOpen] = useState(false)
+
+    // Debounce search term
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm)
+        }, 300)
+        return () => clearTimeout(timer)
+    }, [searchTerm])
 
     const { getToken } = useAuth()
 
@@ -211,6 +220,12 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
             query = query.in("calling_status", callingStatusIn)
         }
 
+        if (debouncedSearch) {
+            query = query.or(
+                `name.ilike.%${debouncedSearch}%,internal_id.ilike.%${debouncedSearch}%,official_mail.ilike.%${debouncedSearch}%`
+            )
+        }
+
         const { data, error, count } = await query.order("created_at", { ascending: false })
 
         if (error) {
@@ -230,13 +245,13 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
         })) as Company[]
 
         return { companies: transformed, totalCount: count || 0 }
-    }, [cityId, assignedTo, eligibilityStatus, callingStatusIn, getToken])
+    }, [cityId, assignedTo, eligibilityStatus, callingStatusIn, debouncedSearch, getToken])
 
     // SWR key based on filters - use stable string key to prevent infinite loops
     const callingStatusKey = callingStatusIn?.length ? callingStatusIn.join(',') : ''
     const hasFilters = cityId || assignedTo || eligibilityStatus || (callingStatusIn && callingStatusIn.length > 0) || showCityColumn
     const swrKey = hasFilters
-        ? `companies-${cityId || 'all'}-${assignedTo || 'any'}-${eligibilityStatus || 'any'}-${callingStatusKey}-${internalRefreshKey}`
+        ? `companies-${cityId || 'all'}-${assignedTo || 'any'}-${eligibilityStatus || 'any'}-${callingStatusKey}-${debouncedSearch}-${internalRefreshKey}`
         : null
 
     const { data, isLoading, mutate } = useSWR<CompaniesData>(
@@ -321,11 +336,15 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
 
         {
             accessorKey: "internal_id",
-            header: () => (
-                <div className="flex items-center gap-1.5">
+            header: ({ column }) => (
+                <button
+                    className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                >
                     <Hash className="h-3 w-3 text-muted-foreground" />
                     <span>ID</span>
-                </div>
+                    <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />
+                </button>
             ),
             cell: ({ row }) => (
                 <Link
@@ -679,7 +698,6 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
         onSortingChange: setSorting,
         onRowSelectionChange: setRowSelection,
         onColumnFiltersChange: setColumnFilters,
-        onGlobalFilterChange: setGlobalFilter,
         onColumnVisibilityChange: setColumnVisibility,
         columnResizeMode: "onChange",
         state: {
@@ -687,7 +705,6 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
             rowSelection,
             columnFilters,
             columnVisibility,
-            globalFilter,
         },
         initialState: {
             pagination: {
@@ -776,6 +793,8 @@ export const CompanyDataTable = function CompanyDataTable({ cityId, assignedTo, 
                     table={table}
                     totalCount={totalCount}
                     onAddCompany={onAddCompany}
+                    searchValue={searchTerm}
+                    onSearchChange={setSearchTerm}
                 />
 
                 {/* Table Container - scrollable */}
