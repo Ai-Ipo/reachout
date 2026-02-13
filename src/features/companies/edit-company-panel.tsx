@@ -410,7 +410,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel className="text-xs text-muted-foreground">Board Type</FormLabel>
-                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                    <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                                                         <FormControl>
                                                             <SelectTrigger className="h-8 text-sm">
                                                                 <SelectValue placeholder="Select" />
@@ -775,7 +775,7 @@ export function EditCompanyPanel({ company, onClose, onSuccess }: EditCompanyPan
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel className="text-xs text-muted-foreground">WhatsApp</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                                                     <FormControl>
                                                         <SelectTrigger className="h-8 text-sm">
                                                             <SelectValue placeholder="Select" />

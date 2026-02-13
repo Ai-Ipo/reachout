@@ -57,7 +57,7 @@ export const directorSchema = z.object({
         .refine(val => val === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), "Invalid email format")
         .optional()
         .default(""),
-    email_status: emailStatusEnum.optional(),
+    email_status: emailStatusEnum.nullish(),
     remark: z.string().max(500, "Remark must be 500 characters max").optional().default("")
 })
 
@@ -74,12 +74,12 @@ export const companyFormSchema = z.object({
     loan_interest: z.string().optional().default(""),
     eligible_amount: z.string().optional().default(""),
     eligibility_status: eligibilityStatusEnum.default("pending"),
-    board_type: boardTypeEnum.optional(),
+    board_type: boardTypeEnum.nullish(),
     official_mail: z.string().optional().default(""),
     representative_name: z.string().max(100, "Name must be 100 characters max").optional().default(""),
     calling_status: callingStatusEnum.default("queued"),
     response: z.string().max(1000, "Response must be 1000 characters max").optional().default(""),
-    whatsapp_status: whatsappStatusEnum.optional(),
+    whatsapp_status: whatsappStatusEnum.nullish(),
     remarks: z.string().max(2000, "Remarks must be 2000 characters max").optional().default(""),
     website: z.string()
         .refine(val => val === "" || /^https?:\/\/.+\..+/.test(val), "Must be a valid URL (e.g., https://example.com)")

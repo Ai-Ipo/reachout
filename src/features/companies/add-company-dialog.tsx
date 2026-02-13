@@ -290,7 +290,7 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-xs font-medium text-muted-foreground">Board Type</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
+                                            <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                                                 <FormControl>
                                                     <SelectTrigger className="h-9 border-border text-sm">
                                                         <SelectValue placeholder="Select board" />
@@ -652,7 +652,7 @@ export function AddCompanyDialog({ open, onOpenChange, cityId, onSuccess }: AddC
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-xs font-medium text-muted-foreground">WhatsApp Status</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
+                                            <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                                                 <FormControl>
                                                     <SelectTrigger className="h-9 border-border text-sm">
                                                         <SelectValue placeholder="Select status" />
