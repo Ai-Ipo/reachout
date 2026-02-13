@@ -123,6 +123,8 @@ function getMappedValue(mapped: MappedCompanyData | null, field: DBField): strin
             return mapped.borrowed_funds
         case "loan_interest":
             return mapped.loan_interest
+        case "eligible_amount":
+            return mapped.eligible_amount
         case "official_mail":
             return mapped.official_mail
         case "calling_status":
