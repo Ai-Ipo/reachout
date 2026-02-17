@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@clerk/nextjs"
 import { toast } from "sonner"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
     ArrowLeft,
     ExternalLink,
@@ -108,6 +109,7 @@ export function CompanyPage({ company, backUrl, backLabel = "Back" }: CompanyPag
     const [remarks, setRemarks] = useState(company.remarks || "")
     const [saving, setSaving] = useState(false)
     const { getToken } = useAuth()
+    const router = useRouter()
 
     async function handleSave() {
         setSaving(true)
@@ -115,7 +117,7 @@ export function CompanyPage({ company, backUrl, backLabel = "Back" }: CompanyPag
             const token = await getToken({ template: "supabase", skipCache: true })
             const supabase = createClient(token)
 
-            const { error } = await supabase
+            const { error, count } = await supabase
                 .from("companies")
                 .update({
                     calling_status: callingStatus,
@@ -123,11 +125,16 @@ export function CompanyPage({ company, backUrl, backLabel = "Back" }: CompanyPag
                     response: response || null,
                     remarks: remarks || null,
                     updated_at: new Date().toISOString(),
-                })
+                }, { count: "exact" })
                 .eq("id", company.id)
 
             if (error) throw error
+            if (count === 0) {
+                toast.error("Update failed — you may not have permission to edit this company")
+                return
+            }
             toast.success("Changes saved")
+            router.refresh()
         } catch (error) {
             console.error("Error saving:", error)
             toast.error("Failed to save changes")
