@@ -42,7 +42,7 @@ export const whatsappStatusEnum = z.enum([
 export const directorSchema = z.object({
     id: z.string().uuid().optional(),
     din_no: z.string()
-        .refine(val => val === "" || /^\d{8}$/.test(val), "DIN must be exactly 8 digits")
+        .refine(val => val === "" || /^\d{1,10}$/.test(val), "DIN must be up to 10 digits")
         .optional()
         .default(""),
     name: z.string().optional().default(""),
