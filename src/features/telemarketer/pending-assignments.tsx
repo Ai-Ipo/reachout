@@ -19,6 +19,7 @@ import {
 
 
 const COMPLETED_STATUSES = ["interested", "not_interested", "not_contactable"]
+const PENDING_STATUSES = ["queued", "callback", "not_answered"]
 
 interface City {
     id: string
@@ -250,6 +251,7 @@ export function TelemarketerAssignments({ onEditCompany, onMutateReady }: Telema
             .select("city_id")
             .eq("assigned_to", profileData.id)
             .eq("eligibility_status", "eligible")
+            .in("calling_status", PENDING_STATUSES)
 
         if (pendingCompanies && pendingCompanies.length > 0) {
             const cityCounts = pendingCompanies.reduce<Record<string, number>>((acc, c) => {
@@ -359,6 +361,7 @@ export function TelemarketerAssignments({ onEditCompany, onMutateReady }: Telema
                             cityId={selectedPendingCity === "all" ? undefined : selectedPendingCity}
                             assignedTo={supabaseProfileId || undefined}
                             eligibilityStatus="eligible"
+                            callingStatusIn={PENDING_STATUSES}
                             onEditCompany={onEditCompany}
                             hideAssignColumn
                             hideAddButton
