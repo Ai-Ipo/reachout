@@ -22,7 +22,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Upload, FileUp, AlertCircle, CheckCircle, Loader2, Trash2, ExternalLink } from "lucide-react"
+import { Upload, FileUp, AlertCircle, AlertTriangle, CheckCircle, Loader2, Trash2, ExternalLink } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
 import { toast } from "sonner"
 import {
@@ -149,6 +149,7 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
     const [validationError, setValidationError] = useState<string | null>(null)
     const [result, setResult] = useState<UploadResult | null>(null)
     const [profileMap, setProfileMap] = useState<Map<string, string>>(new Map()) // name -> id
+    const [unmappedColumns, setUnmappedColumns] = useState<string[]>([])
     const { getToken } = useAuth()
 
     // Get mapped fields that are present in the CSV
@@ -188,6 +189,7 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
         setValidationError(null)
         setResult(null)
         setProfileMap(new Map())
+        setUnmappedColumns([])
     }
 
     const handleClose = () => {
@@ -216,7 +218,8 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
 
                 // Detect column mapping
                 const headers = Object.keys(rows[0])
-                const mapping = detectColumnMapping(headers)
+                const { mapping, unmappedColumns: skipped } = detectColumnMapping(headers)
+                setUnmappedColumns(skipped)
                 const validation = validateMapping(mapping)
 
                 if (!validation.valid) {
@@ -521,6 +524,25 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                                     </Button>
                                 </div>
                             </div>
+
+                            {/* Unmapped columns warning */}
+                            {unmappedColumns.length > 0 && (
+                                <Alert variant="default" className="flex-shrink-0 mb-4 border-yellow-500/50 bg-yellow-500/10">
+                                    <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                                    <AlertTitle className="text-yellow-700">
+                                        {unmappedColumns.length} column{unmappedColumns.length > 1 ? "s" : ""} not recognized
+                                    </AlertTitle>
+                                    <AlertDescription className="text-yellow-700/80">
+                                        These CSV columns will be skipped:{" "}
+                                        {unmappedColumns.map((col, i) => (
+                                            <span key={col}>
+                                                {i > 0 && ", "}
+                                                <code className="rounded bg-yellow-500/20 px-1 py-0.5 text-xs">{col}</code>
+                                            </span>
+                                        ))}
+                                    </AlertDescription>
+                                </Alert>
+                            )}
 
                             {/* Preview table */}
                             <div className="flex-1 overflow-auto border rounded-lg">

@@ -2,12 +2,20 @@
  * CSV column mapping for bulk company imports
  *
  * Supports both Tofler CSV exports and custom spreadsheet formats
- * All column matching is CASE-INSENSITIVE
+ * All column matching is case-insensitive with whitespace normalization
  */
 
-// All possible column names mapped to our database fields (lowercase for case-insensitive matching)
+/**
+ * Normalize a header for matching: trim, lowercase, collapse whitespace.
+ * This eliminates trailing spaces, extra internal spaces, and casing mismatches.
+ */
+function normalizeHeader(header: string): string {
+  return header.trim().toLowerCase().replace(/\s+/g, " ")
+}
+
+// All possible column names mapped to our database fields (normalized form)
 // Order matters - first match wins for each target field
-const COLUMN_ALIASES_LOWER: Record<string, string> = {
+const COLUMN_ALIASES: Record<string, string> = {
   // Company Name (required)
   "company name": "name",
   "name of the company": "name",
@@ -31,7 +39,6 @@ const COLUMN_ALIASES_LOWER: Record<string, string> = {
 
   // Profit fields
   "profit": "profit",
-  "profit ": "profit", // with trailing space
   "net profit": "profit",
   "profit before tax": "profit",
   "profit from continuing operations": "profit",
@@ -40,7 +47,6 @@ const COLUMN_ALIASES_LOWER: Record<string, string> = {
 
   // Turnover/Revenue fields
   "turnover": "turnover",
-  "turnover ": "turnover", // with trailing space
   "sales": "turnover",
   "total income": "turnover",
   "revenue": "turnover",
@@ -406,17 +412,22 @@ export function mapRowToCompany(
 }
 
 /**
- * Detect which CSV columns map to our fields (case-insensitive)
- * Returns a mapping of CSV column name -> our field name
+ * Detect which CSV columns map to our fields.
+ * Headers are normalized (trim, lowercase, collapse whitespace) before matching.
+ * Returns the mapping (using original header keys for PapaParse compatibility)
+ * and a list of column names that could not be mapped.
  */
-export function detectColumnMapping(csvHeaders: string[]): Record<string, string> {
+export function detectColumnMapping(csvHeaders: string[]): {
+  mapping: Record<string, string>
+  unmappedColumns: string[]
+} {
   const mapping: Record<string, string> = {}
   const usedFields = new Set<string>()
+  const unmappedColumns: string[] = []
 
   for (const header of csvHeaders) {
-    const trimmedHeader = header.trim()
-    // Case-insensitive lookup
-    const dbField = COLUMN_ALIASES_LOWER[trimmedHeader.toLowerCase()]
+    const normalized = normalizeHeader(header)
+    const dbField = COLUMN_ALIASES[normalized]
 
     // For director fields, allow multiple (din, name, contact, email for each director)
     const isDirectorField = dbField?.startsWith("director_")
@@ -424,15 +435,17 @@ export function detectColumnMapping(csvHeaders: string[]): Record<string, string
     // Only map if we haven't already mapped this field (first match wins)
     // Exception: director fields can all be mapped
     if (dbField && (isDirectorField || !usedFields.has(dbField))) {
-      // Use the original header (not trimmed) as key so it matches PapaParse row keys
+      // Use the original header as key so it matches PapaParse row keys
       mapping[header] = dbField
       if (!isDirectorField) {
         usedFields.add(dbField)
       }
+    } else if (!dbField) {
+      unmappedColumns.push(header.trim())
     }
   }
 
-  return mapping
+  return { mapping, unmappedColumns }
 }
 
 /**
