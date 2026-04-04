@@ -424,7 +424,8 @@ export function detectColumnMapping(csvHeaders: string[]): Record<string, string
     // Only map if we haven't already mapped this field (first match wins)
     // Exception: director fields can all be mapped
     if (dbField && (isDirectorField || !usedFields.has(dbField))) {
-      mapping[trimmedHeader] = dbField
+      // Use the original header (not trimmed) as key so it matches PapaParse row keys
+      mapping[header] = dbField
       if (!isDirectorField) {
         usedFields.add(dbField)
       }
