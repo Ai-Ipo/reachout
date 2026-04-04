@@ -527,21 +527,18 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
 
                             {/* Unmapped columns warning */}
                             {unmappedColumns.length > 0 && (
-                                <Alert variant="default" className="flex-shrink-0 mb-4 border-yellow-500/50 bg-yellow-500/10">
-                                    <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                                    <AlertTitle className="text-yellow-700">
-                                        {unmappedColumns.length} column{unmappedColumns.length > 1 ? "s" : ""} not recognized
-                                    </AlertTitle>
-                                    <AlertDescription className="text-yellow-700/80">
-                                        These CSV columns will be skipped:{" "}
+                                <div className="flex-shrink-0 mb-4 flex items-center gap-2 rounded-lg border border-yellow-500/50 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-700">
+                                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                                    <span>
+                                        <span className="font-medium">{unmappedColumns.length} column{unmappedColumns.length > 1 ? "s" : ""} skipped:</span>{" "}
                                         {unmappedColumns.map((col, i) => (
                                             <span key={col}>
                                                 {i > 0 && ", "}
                                                 <code className="rounded bg-yellow-500/20 px-1 py-0.5 text-xs">{col}</code>
                                             </span>
                                         ))}
-                                    </AlertDescription>
-                                </Alert>
+                                    </span>
+                                </div>
                             )}
 
                             {/* Preview table */}
