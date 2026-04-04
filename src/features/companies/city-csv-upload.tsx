@@ -107,6 +107,28 @@ const ALL_FIELD_LABELS: Record<string, string> = {
 // All assignable fields for the mapping dropdown
 const ALL_FIELDS = [...DB_FIELDS, ...DIRECTOR_FIELDS] as const
 
+// DB fields that store numbers (numeric type in Postgres)
+const NUMERIC_FIELDS = new Set(["turnover", "profit", "borrowed_funds", "loan_interest", "eligible_amount"])
+
+// Detect whether a CSV column contains mostly numeric or text data by sampling values
+function detectColumnType(rows: Record<string, string>[], header: string): "numeric" | "text" {
+    const samples: string[] = []
+    for (const row of rows) {
+        const val = row[header]?.trim()
+        if (val && val !== "-" && val !== "") {
+            samples.push(val)
+            if (samples.length >= 10) break
+        }
+    }
+    if (samples.length === 0) return "text"
+
+    const numericCount = samples.filter(v =>
+        /^-?[\d.,]+\s*(lac|lakh|cr|crore|k)?$/i.test(v)
+    ).length
+
+    return numericCount / samples.length >= 0.5 ? "numeric" : "text"
+}
+
 // Numeric fields for display formatting
 const NUMERIC_DISPLAY_FIELDS = ["turnover", "profit", "borrowed_funds", "loan_interest", "eligible_amount"]
 
@@ -221,14 +243,20 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
 
     const mappedCount = allHeaders.length - unmappedHeaders.length
 
-    // Get available DB fields for a given header's dropdown (exclude fields taken by other headers)
+    // Get available DB fields for a given header's dropdown
+    // Filters by type (numeric CSV columns → numeric fields, text → text) and excludes already-taken fields
     const getAvailableFields = (currentHeader: string) => {
         const takenByOthers = new Set(
             Object.entries(columnMapping)
                 .filter(([h]) => h !== currentHeader)
                 .map(([, f]) => f)
         )
-        return ALL_FIELDS.filter(f => !takenByOthers.has(f))
+        const colType = detectColumnType(rawRows, currentHeader)
+        return ALL_FIELDS.filter(f => {
+            if (takenByOthers.has(f)) return false
+            const isNumericField = NUMERIC_FIELDS.has(f)
+            return colType === "numeric" ? isNumericField : !isNumericField
+        })
     }
 
     // Handle user changing a column mapping
