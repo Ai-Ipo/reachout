@@ -78,7 +78,9 @@ const FIELD_LABELS: Record<DBField, string> = {
     borrowed_funds: "Borrowed Funds",
     loan_interest: "Interest",
     eligible_amount: "Eligible Amt",
+    website: "Website",
     official_mail: "Email",
+    remarks: "Remarks",
     calling_status: "Status",
     whatsapp_status: "WhatsApp",
     response: "Response",
@@ -155,8 +157,12 @@ function getMappedValue(mapped: MappedCompanyData | null, field: DBField): strin
             return mapped.loan_interest
         case "eligible_amount":
             return mapped.eligible_amount
+        case "website":
+            return mapped.website
         case "official_mail":
             return mapped.official_mail
+        case "remarks":
+            return mapped.remarks
         case "calling_status":
             return mapped.calling_status
         case "whatsapp_status":
@@ -431,7 +437,9 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                     borrowed_funds: mapped.borrowed_funds || null,
                     loan_interest: mapped.loan_interest || null,
                     eligible_amount: mapped.eligible_amount || null,
+                    website: mapped.website || null,
                     official_mail: mapped.official_mail || null,
+                    remarks: mapped.remarks || null,
                     calling_status: mapped.calling_status || "queued",
                     whatsapp_status: mapped.whatsapp_status || null,
                     response: mapped.response || null,

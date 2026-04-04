@@ -75,6 +75,18 @@ const COLUMN_ALIASES: Record<string, string> = {
   "board_type": "board_type",
   "board type": "board_type",
 
+  // Website
+  "website": "website",
+  "company website": "website",
+  "url": "website",
+
+  // Remarks
+  "remarks": "remarks",
+  "remark": "remarks",
+  "notes": "remarks",
+  "comment": "remarks",
+  "comments": "remarks",
+
   // Official Mail
   "official mail id": "official_mail",
   "official mail": "official_mail",
@@ -135,7 +147,9 @@ export const DB_FIELDS = [
   "borrowed_funds",
   "loan_interest",
   "eligible_amount",
+  "website",
   "official_mail",
+  "remarks",
   "calling_status",
   "whatsapp_status",
   "response",
@@ -279,7 +293,9 @@ export interface MappedCompanyData {
   borrowed_funds: number | null
   loan_interest: number | null
   eligible_amount: number | null
+  website: string | null
   official_mail: string | null
+  remarks: string | null
   calling_status: string
   whatsapp_status: string | null
   response: string | null
@@ -306,7 +322,9 @@ export function mapRowToCompany(
     borrowed_funds: null,
     loan_interest: null,
     eligible_amount: null,
+    website: null,
     official_mail: null,
+    remarks: null,
     calling_status: "queued",
     whatsapp_status: null,
     response: null,
@@ -364,8 +382,14 @@ export function mapRowToCompany(
         if (normalized) result.board_type = normalized
         break
       }
+      case "website":
+        result.website = trimmedValue
+        break
       case "official_mail":
         result.official_mail = trimmedValue
+        break
+      case "remarks":
+        result.remarks = trimmedValue
         break
       case "calling_status": {
         const normalized = normalizeCallingStatus(trimmedValue)
