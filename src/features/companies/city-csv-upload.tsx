@@ -30,10 +30,10 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Upload, FileUp, AlertCircle, CheckCircle, Loader2, Trash2, ExternalLink, ChevronRight, ArrowRight } from "lucide-react"
+import { Upload, FileUp, AlertCircle, CheckCircle, Loader2, Trash2, ExternalLink, ArrowRight, Info } from "lucide-react"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useAuth } from "@clerk/nextjs"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
 import {
     detectColumnMapping,
     validateMapping,
@@ -209,8 +209,6 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
     const [profileMap, setProfileMap] = useState<Map<string, string>>(new Map()) // name -> id
     const [rawRows, setRawRows] = useState<Record<string, string>[]>([])
     const [allHeaders, setAllHeaders] = useState<string[]>([])
-    const [mappingExpanded, setMappingExpanded] = useState(false)
-    const [showAllMappings, setShowAllMappings] = useState(false)
     const { getToken } = useAuth()
 
     // Get mapped fields that are present in the CSV
@@ -244,11 +242,16 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
     const mappedCount = allHeaders.length - unmappedHeaders.length
 
     // Get available DB fields for a given header's dropdown
-    // Filters by type (numeric CSV columns → numeric fields, text → text) and excludes already-taken fields
+    // Filters by type (numeric CSV columns → numeric fields, text → text) and excludes already-taken fields.
+    // Fields claimed by empty columns are still considered available.
     const getAvailableFields = (currentHeader: string) => {
         const takenByOthers = new Set(
             Object.entries(columnMapping)
-                .filter(([h]) => h !== currentHeader)
+                .filter(([h]) => {
+                    if (h === currentHeader) return false
+                    // If the column that claims this field is entirely empty, don't count it as taken
+                    return rawRows.some(row => row[h]?.trim())
+                })
                 .map(([, f]) => f)
         )
         const colType = detectColumnType(rawRows, currentHeader)
@@ -307,8 +310,6 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
         setProfileMap(new Map())
         setRawRows([])
         setAllHeaders([])
-        setMappingExpanded(false)
-        setShowAllMappings(false)
     }
 
     const handleClose = () => {
@@ -349,7 +350,6 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                 setColumnMapping(mapping)
                 setRawRows(rows)
                 setAllHeaders(headers)
-                setMappingExpanded(skipped.length > 0)
 
                 // Map rows
                 const mapped: ParsedRow[] = rows.map(row => ({
@@ -648,90 +648,42 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                                 </div>
                             </div>
 
-                            {/* Column Mapping Editor */}
-                            {allHeaders.length > 0 && (
-                                <div className="flex-shrink-0 mb-4">
-                                    <button
-                                        onClick={() => setMappingExpanded(prev => !prev)}
-                                        className="flex w-full items-center gap-2 rounded-lg bg-muted/30 px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
-                                    >
-                                        <ChevronRight className={cn("h-4 w-4 shrink-0 transition-transform", mappingExpanded && "rotate-90")} />
-                                        <span className="font-medium">Column Mapping</span>
-                                        <span className="text-muted-foreground">{mappedCount}/{allHeaders.length} matched</span>
-                                        {unmappedHeaders.length > 0 && (
-                                            <Badge variant="secondary" className="bg-yellow-500/15 text-yellow-700 text-xs">
-                                                {unmappedHeaders.length} skipped
-                                            </Badge>
-                                        )}
-                                    </button>
-
-                                    {mappingExpanded && (
-                                        <div className="mt-2 rounded-lg border bg-background">
-                                            <div className="max-h-[220px] overflow-y-auto p-3">
-                                                <div className="grid grid-cols-[1fr,16px,180px] gap-x-3 gap-y-2 items-center">
-                                                    <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">CSV Column</span>
-                                                    <span />
-                                                    <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Maps To</span>
-
-                                                    {/* Unmapped columns */}
-                                                    {unmappedHeaders.map(header => (
-                                                        <React.Fragment key={header}>
-                                                            <span className="text-sm truncate text-yellow-700 dark:text-yellow-500" title={header.trim()}>{header.trim()}</span>
-                                                            <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                                                            <Select value="__skip__" onValueChange={(v) => handleMappingChange(header, v)}>
-                                                                <SelectTrigger size="sm" className="h-7 text-xs w-full">
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="__skip__">Skip this column</SelectItem>
-                                                                    <SelectSeparator />
-                                                                    {getAvailableFields(header).map(f => (
-                                                                        <SelectItem key={f} value={f}>{ALL_FIELD_LABELS[f] || f}</SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </React.Fragment>
-                                                    ))}
-
-                                                    {/* Mapped columns (when "show all") */}
-                                                    {showAllMappings && (
-                                                        <>
-                                                            {unmappedHeaders.length > 0 && (
-                                                                <div className="col-span-3 border-t my-1" />
-                                                            )}
-                                                            {allHeaders.filter(h => columnMapping[h]).map(header => (
-                                                                <React.Fragment key={header}>
-                                                                    <span className="text-sm truncate" title={header.trim()}>{header.trim()}</span>
-                                                                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                                                                    <Select value={columnMapping[header]} onValueChange={(v) => handleMappingChange(header, v)}>
-                                                                        <SelectTrigger size="sm" className="h-7 text-xs w-full">
-                                                                            <SelectValue />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent>
-                                                                            <SelectItem value="__skip__">Skip this column</SelectItem>
-                                                                            <SelectSeparator />
-                                                                            {getAvailableFields(header).map(f => (
-                                                                                <SelectItem key={f} value={f}>{ALL_FIELD_LABELS[f] || f}</SelectItem>
-                                                                            ))}
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                </React.Fragment>
-                                                            ))}
-                                                        </>
-                                                    )}
-                                                </div>
+                            {/* Unmapped columns — only renders when there are unmapped headers */}
+                            {unmappedHeaders.length > 0 && (
+                                <div className="flex-shrink-0 mb-3 rounded-lg border bg-muted/20 px-3 py-2">
+                                    <div className="flex items-center gap-1.5 mb-2">
+                                        <span className="text-xs font-medium text-muted-foreground">
+                                            {unmappedHeaders.length} extra column{unmappedHeaders.length > 1 ? "s" : ""} in CSV
+                                        </span>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Info className="h-3 w-3 text-muted-foreground/60 cursor-help" />
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" className="max-w-[240px]">
+                                                These columns from your CSV didn&apos;t match any known field. Assign them or leave as skip.
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                    <div className="flex flex-col gap-1.5">
+                                        {unmappedHeaders.map(header => (
+                                            <div key={header} className="flex items-center gap-2">
+                                                <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-medium shrink-0">{header.trim()}</code>
+                                                <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                                                <Select value="__skip__" onValueChange={(v) => handleMappingChange(header, v)}>
+                                                    <SelectTrigger size="sm" className="h-6 text-xs w-[170px]">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="__skip__">Skip this column</SelectItem>
+                                                        <SelectSeparator />
+                                                        {getAvailableFields(header).map(f => (
+                                                            <SelectItem key={f} value={f}>{ALL_FIELD_LABELS[f] || f}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
-
-                                            <div className="border-t px-3 py-1.5">
-                                                <button
-                                                    onClick={() => setShowAllMappings(prev => !prev)}
-                                                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                                                >
-                                                    {showAllMappings ? "Show only unmapped" : `Show all ${allHeaders.length} columns`}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
+                                        ))}
+                                    </div>
                                 </div>
                             )}
 
