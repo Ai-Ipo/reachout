@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import React, { useState, useMemo } from "react"
 import Papa from "papaparse"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -21,15 +21,25 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectSeparator,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Upload, FileUp, AlertCircle, AlertTriangle, CheckCircle, Loader2, Trash2, ExternalLink } from "lucide-react"
+import { Upload, FileUp, AlertCircle, CheckCircle, Loader2, Trash2, ExternalLink, ChevronRight, ArrowRight } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 import {
     detectColumnMapping,
     validateMapping,
     mapRowToCompany,
     DB_FIELDS,
+    DIRECTOR_FIELDS,
     type DBField,
     type MappedCompanyData,
 } from "@/lib/csv-column-map"
@@ -74,6 +84,26 @@ const FIELD_LABELS: Record<DBField, string> = {
     response: "Response",
     assigned_to: "Assigned",
 }
+
+// Labels for all possible target fields (DB + director) used in the mapping dropdown
+const ALL_FIELD_LABELS: Record<string, string> = {
+    ...FIELD_LABELS,
+    director_1_din: "Director 1 DIN",
+    director_1_name: "Director 1 Name",
+    director_1_contact: "Director 1 Contact",
+    director_1_email: "Director 1 Email",
+    director_2_din: "Director 2 DIN",
+    director_2_name: "Director 2 Name",
+    director_2_contact: "Director 2 Contact",
+    director_2_email: "Director 2 Email",
+    director_3_din: "Director 3 DIN",
+    director_3_name: "Director 3 Name",
+    director_3_contact: "Director 3 Contact",
+    director_3_email: "Director 3 Email",
+}
+
+// All assignable fields for the mapping dropdown
+const ALL_FIELDS = [...DB_FIELDS, ...DIRECTOR_FIELDS] as const
 
 // Numeric fields for display formatting
 const NUMERIC_DISPLAY_FIELDS = ["turnover", "profit", "borrowed_funds", "loan_interest", "eligible_amount"]
@@ -149,7 +179,10 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
     const [validationError, setValidationError] = useState<string | null>(null)
     const [result, setResult] = useState<UploadResult | null>(null)
     const [profileMap, setProfileMap] = useState<Map<string, string>>(new Map()) // name -> id
-    const [unmappedColumns, setUnmappedColumns] = useState<string[]>([])
+    const [rawRows, setRawRows] = useState<Record<string, string>[]>([])
+    const [allHeaders, setAllHeaders] = useState<string[]>([])
+    const [mappingExpanded, setMappingExpanded] = useState(false)
+    const [showAllMappings, setShowAllMappings] = useState(false)
     const { getToken } = useAuth()
 
     // Get mapped fields that are present in the CSV
@@ -175,6 +208,55 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
         return { total, valid, duplicates, invalid, removed, toImport, withDirectors }
     }, [parsedData])
 
+    // Headers not mapped to any DB field
+    const unmappedHeaders = useMemo(() => {
+        return allHeaders.filter(h => !columnMapping[h])
+    }, [allHeaders, columnMapping])
+
+    const mappedCount = allHeaders.length - unmappedHeaders.length
+
+    // Get available DB fields for a given header's dropdown (exclude fields taken by other headers)
+    const getAvailableFields = (currentHeader: string) => {
+        const takenByOthers = new Set(
+            Object.entries(columnMapping)
+                .filter(([h]) => h !== currentHeader)
+                .map(([, f]) => f)
+        )
+        return ALL_FIELDS.filter(f => !takenByOthers.has(f))
+    }
+
+    // Handle user changing a column mapping
+    const handleMappingChange = (csvHeader: string, newDbField: string) => {
+        const nextMapping = { ...columnMapping }
+
+        if (newDbField === "__skip__") {
+            delete nextMapping[csvHeader]
+        } else {
+            // If another header already maps to this field, remove that mapping
+            if (!newDbField.startsWith("director_")) {
+                for (const [key, value] of Object.entries(nextMapping)) {
+                    if (value === newDbField && key !== csvHeader) {
+                        delete nextMapping[key]
+                    }
+                }
+            }
+            nextMapping[csvHeader] = newDbField
+        }
+
+        setColumnMapping(nextMapping)
+
+        // Re-map all rows with updated mapping
+        setParsedData(prev =>
+            rawRows.map((row, i) => ({
+                original: row,
+                mapped: mapRowToCompany(row, nextMapping),
+                isDuplicate: prev[i]?.isDuplicate,
+                duplicateId: prev[i]?.duplicateId,
+                isRemoved: prev[i]?.isRemoved,
+            }))
+        )
+    }
+
     // Remove a row from import
     const handleRemoveRow = (index: number) => {
         setParsedData(prev => prev.map((row, i) =>
@@ -189,7 +271,10 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
         setValidationError(null)
         setResult(null)
         setProfileMap(new Map())
-        setUnmappedColumns([])
+        setRawRows([])
+        setAllHeaders([])
+        setMappingExpanded(false)
+        setShowAllMappings(false)
     }
 
     const handleClose = () => {
@@ -219,7 +304,6 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                 // Detect column mapping
                 const headers = Object.keys(rows[0])
                 const { mapping, unmappedColumns: skipped } = detectColumnMapping(headers)
-                setUnmappedColumns(skipped)
                 const validation = validateMapping(mapping)
 
                 if (!validation.valid) {
@@ -229,6 +313,9 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                 }
 
                 setColumnMapping(mapping)
+                setRawRows(rows)
+                setAllHeaders(headers)
+                setMappingExpanded(skipped.length > 0)
 
                 // Map rows
                 const mapped: ParsedRow[] = rows.map(row => ({
@@ -525,19 +612,90 @@ export function CityCSVUpload({ open, onOpenChange, cityId, cityName, onSuccess 
                                 </div>
                             </div>
 
-                            {/* Unmapped columns warning */}
-                            {unmappedColumns.length > 0 && (
-                                <div className="flex-shrink-0 mb-4 flex items-center gap-2 rounded-lg border border-yellow-500/50 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-700">
-                                    <AlertTriangle className="h-4 w-4 shrink-0" />
-                                    <span>
-                                        <span className="font-medium">{unmappedColumns.length} column{unmappedColumns.length > 1 ? "s" : ""} skipped:</span>{" "}
-                                        {unmappedColumns.map((col, i) => (
-                                            <span key={col}>
-                                                {i > 0 && ", "}
-                                                <code className="rounded bg-yellow-500/20 px-1 py-0.5 text-xs">{col}</code>
-                                            </span>
-                                        ))}
-                                    </span>
+                            {/* Column Mapping Editor */}
+                            {allHeaders.length > 0 && (
+                                <div className="flex-shrink-0 mb-4">
+                                    <button
+                                        onClick={() => setMappingExpanded(prev => !prev)}
+                                        className="flex w-full items-center gap-2 rounded-lg bg-muted/30 px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
+                                    >
+                                        <ChevronRight className={cn("h-4 w-4 shrink-0 transition-transform", mappingExpanded && "rotate-90")} />
+                                        <span className="font-medium">Column Mapping</span>
+                                        <span className="text-muted-foreground">{mappedCount}/{allHeaders.length} matched</span>
+                                        {unmappedHeaders.length > 0 && (
+                                            <Badge variant="secondary" className="bg-yellow-500/15 text-yellow-700 text-xs">
+                                                {unmappedHeaders.length} skipped
+                                            </Badge>
+                                        )}
+                                    </button>
+
+                                    {mappingExpanded && (
+                                        <div className="mt-2 rounded-lg border bg-background">
+                                            <div className="max-h-[220px] overflow-y-auto p-3">
+                                                <div className="grid grid-cols-[1fr,16px,180px] gap-x-3 gap-y-2 items-center">
+                                                    <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">CSV Column</span>
+                                                    <span />
+                                                    <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Maps To</span>
+
+                                                    {/* Unmapped columns */}
+                                                    {unmappedHeaders.map(header => (
+                                                        <React.Fragment key={header}>
+                                                            <span className="text-sm truncate text-yellow-700 dark:text-yellow-500" title={header.trim()}>{header.trim()}</span>
+                                                            <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                                            <Select value="__skip__" onValueChange={(v) => handleMappingChange(header, v)}>
+                                                                <SelectTrigger size="sm" className="h-7 text-xs w-full">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="__skip__">Skip this column</SelectItem>
+                                                                    <SelectSeparator />
+                                                                    {getAvailableFields(header).map(f => (
+                                                                        <SelectItem key={f} value={f}>{ALL_FIELD_LABELS[f] || f}</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </React.Fragment>
+                                                    ))}
+
+                                                    {/* Mapped columns (when "show all") */}
+                                                    {showAllMappings && (
+                                                        <>
+                                                            {unmappedHeaders.length > 0 && (
+                                                                <div className="col-span-3 border-t my-1" />
+                                                            )}
+                                                            {allHeaders.filter(h => columnMapping[h]).map(header => (
+                                                                <React.Fragment key={header}>
+                                                                    <span className="text-sm truncate" title={header.trim()}>{header.trim()}</span>
+                                                                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                                                    <Select value={columnMapping[header]} onValueChange={(v) => handleMappingChange(header, v)}>
+                                                                        <SelectTrigger size="sm" className="h-7 text-xs w-full">
+                                                                            <SelectValue />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            <SelectItem value="__skip__">Skip this column</SelectItem>
+                                                                            <SelectSeparator />
+                                                                            {getAvailableFields(header).map(f => (
+                                                                                <SelectItem key={f} value={f}>{ALL_FIELD_LABELS[f] || f}</SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </React.Fragment>
+                                                            ))}
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="border-t px-3 py-1.5">
+                                                <button
+                                                    onClick={() => setShowAllMappings(prev => !prev)}
+                                                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                                >
+                                                    {showAllMappings ? "Show only unmapped" : `Show all ${allHeaders.length} columns`}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
